@@ -1,0 +1,57 @@
+import { test, expect } from '@playwright/test'
+import fr from '../src/locales/fr.json' with { type: 'json' }
+
+test('parcours réel PostgreSQL : client → facture 120 → règlements 50/70 → journal → impression arabe', async ({ page }) => {
+  test.skip(!process.env.E2E_PASSWORD, 'Base PostgreSQL azula_e2e et identifiants éphémères requis ; aucune API simulée pour ce parcours.')
+  await page.goto('/login')
+  await page.locator('input[name="username"]').fill(process.env.E2E_USERNAME ?? 'e2e-admin')
+  await page.locator('input[name="password"]').fill(process.env.E2E_PASSWORD!)
+  await page.getByRole('button', { name: fr.signIn, exact: true }).click()
+  await expect(page).toHaveURL(/\/invoices$/)
+  const uniqueName = `Client E2E ${Date.now()} — İstanbul مرحبا REF-A12`
+  await page.goto('/customers')
+  await page.getByRole('button', { name: fr.newCustomer, exact: true }).click()
+  await page.locator('input[name="name"]').fill(uniqueName)
+  await page.locator('input[name="email"]').fill('demo@example.invalid')
+  await page.getByRole('button', { name: fr.save, exact: true }).click()
+  await expect(page.getByText(uniqueName, { exact: true })).toBeVisible()
+  await page.goto('/invoices/new')
+  await page.locator('.search-select input').first().fill(uniqueName)
+  await page.getByRole('button', { name: uniqueName, exact: true }).click()
+  await page.locator('.invoice-main select').selectOption('ar')
+  await page.getByRole('textbox', { name: `${fr.description} 1`, exact: true }).fill('Prestation — خدمة REF-A12')
+  await page.getByRole('textbox', { name: `${fr.quantity} 1`, exact: true }).fill('1')
+  await page.getByRole('textbox', { name: `${fr.unitPrice} 1`, exact: true }).fill('100.00')
+  await page.getByRole('textbox', { name: `${fr.taxRate} 1`, exact: true }).fill('20')
+  const draftResponse = page.waitForResponse(response => response.url().endsWith('/api/invoices/') && response.request().method() === 'POST')
+  await page.getByRole('button', { name: fr.saveDraft, exact: true }).click()
+  const draft = await (await draftResponse).json()
+  expect(draft.total).toBe('120.00')
+  await page.getByRole('button', { name: fr.validate, exact: true }).click()
+  await page.getByRole('button', { name: fr.confirmValidation, exact: true }).click()
+  await expect(page.getByTestId('invoice-balance')).toContainText('120,00')
+  for (const [amount, balance] of [['50.00', '70,00'], ['70.00', '0,00']]) {
+    await page.getByRole('button', { name: fr.recordPayment, exact: true }).click()
+    await page.locator('input[name="amount"]').fill(amount!)
+    const paymentResponse = page.waitForResponse(response => response.url().endsWith(`/invoices/${draft.id}/payments/`) && response.request().method() === 'POST')
+    await page.getByRole('button', { name: fr.save, exact: true }).click()
+    const response = await paymentResponse
+    expect(response.ok()).toBe(true)
+    await expect(page.getByTestId('invoice-balance')).toContainText(balance!)
+    if (amount === '70.00') {
+      const original = response.request()
+      const retry = await page.request.post(original.url(), { data: original.postDataJSON(), headers: { 'Idempotency-Key': original.headers()['idempotency-key']!, 'X-CSRFToken': original.headers()['x-csrftoken']! } })
+      expect(retry.ok()).toBe(true)
+      expect((await retry.json()).payments).toHaveLength(2)
+    }
+  }
+  const entries = await (await page.request.get(`/api/entries/?search=${encodeURIComponent(draft.number || `INV-${new Date().getFullYear()}`)}`)).json()
+  const ownEntries = entries.results.filter((entry: { invoice: number }) => entry.invoice === draft.id)
+  expect(ownEntries).toHaveLength(3)
+  for (const entry of ownEntries) expect(entry.total_debit).toBe(entry.total_credit)
+  await page.goto('/accounting')
+  await expect(page.locator('h1')).toBeVisible()
+  await page.goto(`/invoices/${draft.id}/print`)
+  await expect(page.getByTestId('printable-invoice')).toHaveAttribute('dir', 'rtl')
+  await expect(page.getByTestId('printable-invoice')).toContainText('REF-A12')
+})

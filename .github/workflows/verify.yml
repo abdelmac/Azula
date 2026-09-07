@@ -1,0 +1,72 @@
+name: Vérifications PostgreSQL et navigateur
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17.11-bookworm
+        env:
+          POSTGRES_DB: azula_e2e
+          POSTGRES_USER: azula
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U azula -d azula_e2e"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      ENVIRONMENT: test
+      DJANGO_DEBUG: '0'
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,testserver
+      CSRF_TRUSTED_ORIGINS: http://127.0.0.1:8080
+      DB_NAME: azula_e2e
+      DB_USER: azula
+      DB_HOST: 127.0.0.1
+      DB_PORT: '5432'
+      TEST_DB_NAME: test_azula
+      E2E_USERNAME: e2e-admin
+      E2E_BASE_URL: http://127.0.0.1:8080
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14.7'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.19.0'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Secrets éphémères propres à ce job
+        run: |
+          python -c "import os,secrets; f=open(os.environ['GITHUB_ENV'],'a'); f.write('DJANGO_SECRET_KEY='+secrets.token_urlsafe(64)+'\nE2E_PASSWORD='+secrets.token_urlsafe(32)+'\n'); f.close()"
+      - run: pip install -r backend/requirements.txt
+      - run: npm ci
+        working-directory: frontend
+      - run: python manage.py migrate --noinput
+        working-directory: backend
+      - run: python manage.py makemigrations --check --dry-run
+        working-directory: backend
+      - run: python manage.py check
+        working-directory: backend
+      - run: ruff check .
+        working-directory: backend
+      - run: python -m pytest
+        working-directory: backend
+      - run: npm run check && npm run lint && npm run test && npm run build && npm run size
+        working-directory: frontend
+      - run: python scripts/prepare_e2e.py
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - run: npm run test:e2e
+        working-directory: frontend
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-results
+          path: frontend/test-results

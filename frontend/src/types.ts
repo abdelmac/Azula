@@ -1,0 +1,18 @@
+export const languages = ['fr', 'en', 'ar', 'de', 'tr'] as const
+export type Language = typeof languages[number]
+export type Role = 'admin' | 'accountant' | 'sales' | 'viewer'
+export interface User { id: number; username: string; role: Role; language: Language; company: number | Company; is_active?: boolean }
+export interface Company { id: number; name: string; address: string; email: string; currency: string; precision: number; document_language: Language; locale: string }
+export interface Page<T> { count: number; next: string | null; previous: string | null; results: T[] }
+export interface Customer { id: number; name: string; email: string; address: string; tax_id: string; archived: boolean }
+export interface Product { id: number; reference: string; name: string; unit_price: string; tax_rate: string; archived: boolean }
+export interface InvoiceLine { id?: number; product: number | null; description: string; quantity: string; unit_price: string; tax_rate: string; net?: string; tax?: string; total?: string }
+export interface Payment { id: number; amount: string; date: string; reference: string }
+export interface Snapshot { company: Pick<Company, 'name' | 'address' | 'email' | 'currency'>; customer: Pick<Customer, 'name' | 'address' | 'email' | 'tax_id'>; number: string; issue_date: string; due_date: string; lines: InvoiceLine[]; currency: string; precision: number; locale: string; document_language: Language; rounding_policy?: string; rounding?: { mode: string; scope: string; tax_base: string }; net: string; tax: string; total: string }
+export interface Invoice { id: number; customer: number; customer_name: string; issue_date: string; due_date: string; document_language: Language; status: 'draft' | 'validated'; number: string; lines: InvoiceLine[]; net: string; tax: string; total: string; paid: string; balance: string; snapshot: Snapshot | null; payments: Payment[] }
+export interface Period { id: number; name: string; start: string; end: string; closed: boolean }
+export interface Journal { id: number; code: string; name: string }
+export interface EntryLine { account: number; account_code: string; debit: string; credit: string }
+export interface Entry { id: number; date: string; reference: string; journal: number; journal_code: string; invoice: number; lines: EntryLine[]; total_debit: string; total_credit: string }
+export interface TrialBalance { accounts: { code: string; name: string; debit: string; credit: string; balance: string }[]; total_debit: string; total_credit: string }
+export interface AuditEvent { id: number; created_at: string; actor_name: string; action: string; object_type: string; object_id: string; metadata: Record<string, unknown> }

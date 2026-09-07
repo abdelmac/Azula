@@ -1,0 +1,5 @@
+# Complément facultatif : expose PostgreSQL seulement sur la boucle locale.
+services:
+  db:
+    ports:
+      - "127.0.0.1:5432:5432"
