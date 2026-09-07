@@ -13,11 +13,14 @@ DJANGO_ALLOWED_HOSTS=erp.exemple-interne.fr
 CSRF_TRUSTED_ORIGINS=https://erp.exemple-interne.fr
 ALLOW_DEMO_DATA=0
 TRUST_HTTPS_PROXY=1
+TRUSTED_PROXY=ADRESSE_IP_DU_PROXY
 ```
 
 Conserver une clé Django longue et aléatoire, un mot de passe PostgreSQL propre à l’installation et un rôle applicatif non superutilisateur. Protéger `.env` avec les droits de fichiers/ACL du compte de service. Le proxy doit **écraser** `X-Forwarded-Proto` et être le seul à joindre l’application lorsque `TRUST_HTTPS_PROXY=1`. Ne pas activer cette option derrière une entrée réseau non maîtrisée. Installer les certificats nécessaires sur les postes pour le réseau local.
 
-Les cookies deviennent Secure, HTTPS est imposé et HSTS est activé. Lancer `python manage.py check --deploy` avec les véritables variables de production. L’image PostgreSQL du profil Compose crée `POSTGRES_USER` comme **superutilisateur de développement** : ne pas réutiliser ce compte dans l’application en exploitation. Séparer le compte administratif, le rôle propriétaire de migration et le rôle applicatif restreint, puis vérifier les droits après migration.
+Lancer le serveur avec `python server.py` : Waitress exige le proxy explicitement configuré, supprime les en-têtes de transfert non autorisés et transmet seulement le protocole et l’adresse cliente. La valeur `*` est réservée à une entrée privée entièrement protégée par le proxy de l’hébergeur, comme dans le [profil Render](deployment.md).
+
+Les cookies deviennent Secure, HTTPS est imposé et HSTS est activé. Seul `/healthz/` accepte une sonde HTTP interne : elle vérifie la connexion PostgreSQL, retourne 200 ou 503 sans détails et sans cache. Lancer `python manage.py check --deploy` avec les véritables variables de production. L’image PostgreSQL du profil Compose crée `POSTGRES_USER` comme **superutilisateur de développement** : ne pas réutiliser ce compte dans l’application en exploitation. Séparer le compte administratif, le rôle propriétaire de migration et le rôle applicatif restreint, puis vérifier les droits après migration.
 
 Exemple de droits minimaux à adapter par l’administrateur PostgreSQL, après création du rôle `azula_app` et son mot de passe via `\password` :
 
@@ -34,7 +37,7 @@ Le rôle applicatif n’est propriétaire d’aucune table ni fonction et ne dis
 
 ## Connexion et comptes
 
-Les erreurs de connexion ne révèlent pas si le compte existe. Les compteurs de tentatives sont persistés dans PostgreSQL (8 échecs par nom, 30 par adresse sur une fenêtre de 15 minutes par défaut). Les clés sont hachées ; aucun mot de passe n’est journalisé. Le serveur utilise `REMOTE_ADDR`, sans faire confiance à `X-Forwarded-For` reçu du client. Derrière un proxy, plusieurs utilisateurs peuvent partager le même quota d’adresse : dimensionner ce seuil et prévoir aussi une limite au niveau du proxy.
+Les erreurs de connexion ne révèlent pas si le compte existe. Les compteurs de tentatives sont persistés dans PostgreSQL (8 échecs par nom, 30 par adresse sur une fenêtre de 15 minutes par défaut). Les clés sont hachées ; aucun mot de passe n’est journalisé. Le serveur utilise `REMOTE_ADDR` ; Waitress ne le remplace que pour le proxy explicitement autorisé, avec une chaîne d’un seul proxy. Vérifier la topologie réelle et prévoir aussi une limite au niveau du proxy si nécessaire.
 
 Les rôles et opérations sensibles sont historisés. La modification d’un mot de passe invalide les sessions Django correspondantes. Une désactivation ou un changement de rôle est vérifié lors des requêtes suivantes. La commande initiale demande un mot de passe sans l’exposer dans les arguments. Ne pas utiliser de compte partagé dans une installation d’entreprise.
 

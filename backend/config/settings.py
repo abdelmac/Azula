@@ -1,10 +1,12 @@
 """Configuration PostgreSQL uniquement ; secrets et environnement explicites."""
 import os
+import re
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
+from .database import database_settings
 from .middleware import static_headers
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -17,6 +19,13 @@ if not SECRET_KEY or len(SECRET_KEY) < 32:
     raise ImproperlyConfigured("Configurez DJANGO_SECRET_KEY (32 caractères minimum) dans .env.")
 ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 CSRF_TRUSTED_ORIGINS = [v for v in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",") if v]
+# Render fournit le nom exact du service ; aucune autorisation globale *.onrender.com.
+render_hostname = os.environ.get("RENDER_EXTERNAL_HOSTNAME", "").strip().lower()
+if render_hostname:
+    if len(render_hostname) > 253 or not re.fullmatch(r"[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?", render_hostname):
+        raise ImproperlyConfigured("RENDER_EXTERNAL_HOSTNAME doit contenir un nom d’hôte sans protocole ni chemin.")
+    ALLOWED_HOSTS.append(render_hostname)
+    CSRF_TRUSTED_ORIGINS.append(f"https://{render_hostname}")
 ALLOW_DEMO_DATA = os.environ.get("ALLOW_DEMO_DATA", "0") == "1" and ENVIRONMENT != "production"
 INSTALLED_APPS = [
     "django.contrib.admin", "django.contrib.auth", "django.contrib.contenttypes",
@@ -37,17 +46,7 @@ MIDDLEWARE = [
 ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"
 AUTH_USER_MODEL = "erp.User"
-DATABASES = {"default": {
-    "ENGINE": "django.db.backends.postgresql",
-    "NAME": os.environ.get("DB_NAME", "azula"),
-    "USER": os.environ.get("DB_USER", "azula"),
-    "PASSWORD": os.environ.get("DB_PASSWORD", ""),
-    "HOST": os.environ.get("DB_HOST", "127.0.0.1"),
-    "PORT": os.environ.get("DB_PORT", "5432"),
-    "CONN_MAX_AGE": 60,
-    "OPTIONS": {"connect_timeout": 5},
-    "TEST": {"NAME": os.environ.get("TEST_DB_NAME", "test_azula")},
-}}
+DATABASES = {"default": database_settings(os.environ)}
 TEMPLATES = [{
     "BACKEND": "django.template.backends.django.DjangoTemplates",
     "DIRS": [], "APP_DIRS": True,
@@ -93,6 +92,7 @@ SESSION_COOKIE_AGE = 8 * 60 * 60
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 CSRF_FAILURE_VIEW = "config.views.csrf_failure"
 SECURE_SSL_REDIRECT = ENVIRONMENT == "production"
+SECURE_REDIRECT_EXEMPT = [r"^healthz/$"]
 SECURE_HSTS_SECONDS = 31536000 if ENVIRONMENT == "production" else 0
 SECURE_HSTS_INCLUDE_SUBDOMAINS = ENVIRONMENT == "production"
 SECURE_HSTS_PRELOAD = False

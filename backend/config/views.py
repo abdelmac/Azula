@@ -1,11 +1,24 @@
 from django.conf import settings
+from django.db import DatabaseError, connection
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.cache import never_cache
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_GET, require_safe
 
 
 def csrf_failure(request, reason=""):
     return JsonResponse({"code": "csrf_failed", "detail": "csrf_failed"}, status=403)
+
+
+@never_cache
+@require_safe
+def health(request):
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            ready = cursor.fetchone() == (1,)
+    except DatabaseError:
+        ready = False
+    return JsonResponse({"status": "ok" if ready else "unavailable"}, status=200 if ready else 503)
 
 
 @never_cache

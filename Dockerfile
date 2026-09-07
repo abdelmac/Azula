@@ -16,4 +16,4 @@ RUN python -c "import os,secrets; os.environ['DJANGO_SECRET_KEY']=secrets.token_
 RUN useradd --uid 10001 --create-home azula
 USER azula
 EXPOSE 8000
-CMD ["waitress-serve", "--listen=0.0.0.0:8000", "--threads=8", "config.wsgi:application"]
+CMD ["python", "server.py"]

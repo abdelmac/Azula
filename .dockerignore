@@ -1,5 +1,12 @@
 .git
 .env
+**/.env
+**/.env.*
+**/*.env
+**/*.env.*
+**/*.pem
+**/*.key
+**/secrets
 .venv
 .local
 .tmp*

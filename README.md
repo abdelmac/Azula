@@ -10,6 +10,8 @@ Ce prototype n’est ni un ERP complet, ni un logiciel audité ou fiscalement ce
 
 Sur le **serveur de développement**, installer Docker avec Compose et Python 3 pour générer la configuration. Docker n’est pas nécessaire sur les postes utilisateurs : un navigateur et l’accès au serveur suffisent.
 
+Sous Windows, utiliser [Docker Desktop avec WSL 2](https://docs.docker.com/desktop/setup/install/windows-install/). À la première installation de [WSL](https://learn.microsoft.com/en-us/windows/wsl/install), redémarrer Windows lorsque demandé pour terminer l’activation de la plateforme de virtualisation, puis démarrer Docker Desktop avant les commandes ci-dessous.
+
 Depuis la racine, dans PowerShell ou un terminal macOS :
 
 ```text
@@ -24,6 +26,12 @@ La commande demande deux fois un mot de passe d’au moins 12 caractères, sans 
 Ouvrir **http://localhost:8080**. Dans les paramètres, vérifier les coordonnées, la devise, la précision et créer une période ouverte couvrant les dates de facture et de règlement. Les migrations sont une étape explicite ; le démarrage du serveur ne modifie pas automatiquement le schéma.
 
 Sous macOS, employer `python3` à la place de `python` si nécessaire. Pour un environnement sans Docker, suivre [le guide Windows/macOS](docs/development.md).
+
+## Déploiement Internet à 0 €
+
+Le profil [render.yaml](render.yaml) prépare l’application Docker sur **Render Free**, avec une base **Neon Free** séparée. Suivre [le guide de déploiement](docs/deployment.md) pour les comptes, les migrations, le rôle PostgreSQL restreint, les secrets et HTTPS. Le profil peut ensuite évoluer vers des offres payantes sans réécrire l’application.
+
+Render Free met l’application en veille après 15 minutes sans activité ; le premier accès peut être plus lent. Les données restent dans Neon, dans les quotas gratuits. La présence du profil ne signifie pas qu’une instance Internet a déjà été publiée.
 
 ## Parcours de démonstration manuel
 

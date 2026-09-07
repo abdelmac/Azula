@@ -1,0 +1,37 @@
+# yaml-language-server: $schema=https://render.com/schema/render.yaml.json
+# Démarrage gratuit : application Render + PostgreSQL Neon configuré séparément.
+services:
+  - type: web
+    name: azula
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    autoDeployTrigger: "off"
+    healthCheckPath: /healthz/
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DJANGO_DEBUG
+        value: "0"
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: ALLOW_DEMO_DATA
+        value: "0"
+      - key: TRUST_HTTPS_PROXY
+        value: "1"
+      # Le port HTTP de Render est privé, accessible par son proxy HTTPS.
+      # Ne pas reprendre cette confiance globale sur un port public autonome.
+      - key: TRUSTED_PROXY
+        value: "*"
+      - key: DB_SSLMODE
+        value: verify-full
+      - key: DB_SSLROOTCERT
+        value: system
+      - key: DB_CONN_MAX_AGE
+        value: "0"
+      - key: DB_TRANSACTION_POOLING
+        value: "1"

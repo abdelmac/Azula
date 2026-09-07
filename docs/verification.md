@@ -1,6 +1,16 @@
 # Vérifications effectuées le 7 septembre 2026
 
-Ce rapport distingue les assertions exécutées des contrôles qui nécessitent encore PostgreSQL. Le parcours comptable complet n’a pas été validé dans cet environnement.
+Azula fonctionne localement avec PostgreSQL dans Docker. Après adaptation du thème et des réglages d’hébergement, les **161 tests backend**, **18 tests frontend** et **6 tests navigateur**, dont le parcours comptable complet, ont réussi. Ce rapport précise les contrôles effectués et les limites restantes.
+
+## Thème bleu et préparation du déploiement Internet
+
+Le thème reprend les bleus du logo fourni : marine, bleu vif et cyan, avec des fonds clairs ; les couleurs sémantiques des erreurs et statuts restent distinctes. La navigation, la connexion, les formulaires, l’impression et le favicon ont été adaptés. Le bouton primaire blanc sur `#075ad6` présente un contraste calculé de 6,10:1. La capture authentifiée locale a été inspectée après reconstruction Docker, sans erreur JavaScript.
+
+Le lanceur Waitress accepte le port de l’hébergeur et un proxy HTTPS explicitement configuré. `/healthz/` vérifie PostgreSQL sans divulguer d’erreur de connexion. La configuration prend en charge les URL PostgreSQL hébergées, la vérification TLS et les connexions poolées ; les secrets `.env` récursifs sont exclus du contexte Docker.
+
+Derniers contrôles : build Docker réussi ; **161 tests pytest en 68,28 s**, Ruff réussi ; contrôles TypeScript et ESLint réussis ; **18 tests Vitest** ; **6 tests Playwright en 10,9 s, aucun ignoré**. Ces derniers utilisent l’image actualisée sur 8081 et la base synthétique `azula_e2e` ; seul le mot de passe de son compte `e2e-admin` a été renouvelé pour l’essai. Le conteneur temporaire a été supprimé, la base conservée. Le compte et les données de l’instance 8080 n’ont pas été réinitialisés.
+
+Le profil Render Free + Neon Free est préparé dans `render.yaml` et [deployment.md](deployment.md). Les connexions aux hébergeurs et le déploiement distant restent à terminer ; aucun résultat HTTPS distant ni URL publique active n’est encore revendiqué. Les chiffres détaillés plus bas consignent également le lancement local précédent.
 
 ## Environnement observé
 
@@ -10,17 +20,30 @@ Ce rapport distingue les assertions exécutées des contrôles qui nécessitent 
 - Node 24.19.0, Vue 3.5.42, Router 5.3.1, Vue I18n 11.4.10, Vite 8.2.2, TypeScript 6.0.3.
 - pytest 9.1.1, pytest-django 4.14.0, Vitest 5.0.0, Playwright 1.63.0.
 - Chrome installé : `152.0.7977.76`, exécution sans fenêtre visible.
-- PostgreSQL 17.11 téléchargé depuis EDB, version du binaire serveur lue ; cluster non initialisé. Docker absent du PATH ; WSL non installé.
+- PostgreSQL 17.11 téléchargé depuis EDB, version du binaire serveur lue ; cluster non initialisé. Lors des premiers contrôles, Docker était absent du PATH et WSL non installé ; voir l’installation des prérequis ci-dessous.
 
 Ce matériel ne correspond pas au profil double cœur/4 Go. Aucun essai physique sur macOS, Safari ou une machine modeste n’est revendiqué.
+
+## Installation des prérequis — 07/09/2026
+
+WSL **2.7.13** a été installé par la commande Microsoft `wsl --install --no-distribution --web-download` (code de sortie `0`). Après le redémarrage Windows requis pour activer `VirtualMachinePlatform`, WSL 2 est disponible.
+
+Docker Desktop **4.90.0** a été installé pour l’utilisateur dans `%LOCALAPPDATA%\Programs\DockerDesktop`, avec le backend WSL 2. Le moteur Docker **29.7.2** et Docker Compose **5.5.1** répondent. `docker compose config --quiet` et `docker compose up -d --build` réussissent : PostgreSQL **17.11** est `healthy`, le backend est actif sur **127.0.0.1:8080**, et PostgreSQL n’est pas publié sur un port hôte. Le build Vue et la collecte des ressources statiques ont réussi dans l’image.
+
+Le fichier `.env` existant a été préservé. Toutes les migrations Django et les quatre migrations `erp` ont été appliquées depuis une base vide. Le premier administrateur a été créé par `bootstrap_admin` : société locale « Azula - Developpement », devise de démonstration explicitement choisie `EUR`, sans pays fiscal. Son mot de passe aléatoire est conservé dans `.local/azula-access.json`, ignoré par Git et accessible uniquement au compte Windows courant (ACL vérifiée). Aucun client ni facture de test n’a été ajouté à cette instance.
+
+Chrome a vérifié sur `http://localhost:8080` : page de connexion HTTP 200, connexion du compte administrateur, profil authentifié HTTP 200 et écran Factures vide, sans erreur JavaScript. La capture `.local/screenshots/azula-running.png` a été inspectée. Une période ouverte reste à créer dans les paramètres avant la première validation de facture.
 
 ## Backend
 
 | Commande / contrôle | Résultat |
 |---|---|
-| `python manage.py check` | Réussi, aucun problème signalé |
-| `python -m pip check` | Réussi, aucune dépendance incompatible signalée |
-| `ruff check .` dans backend | Réussi |
+| `python manage.py check` dans le conteneur | Réussi, aucun problème signalé |
+| `python -m pip check` dans le conteneur | Réussi, aucune dépendance incompatible signalée |
+| `python -m ruff check --no-cache .` dans le conteneur | Réussi |
+| `python -m pytest -p no:cacheprovider` dans le conteneur | **135 réussis en 46,62 s**, base séparée `test_azula_launch` |
+| `python manage.py migrate --noinput`, puis `migrate --check` | Réussis, toutes les migrations appliquées |
+| `python manage.py makemigrations --check --dry-run` | Réussi, aucun changement détecté ; historique PostgreSQL contrôlé |
 | `python -m compileall -q config erp tests` | Réussi |
 | `python -m pytest tests/test_calculation.py tests/test_api_contract.py -q -p no:cacheprovider` | **72 réussis**, dernière exécution 0,93 s |
 | `python -m pytest --collect-only -q -p no:cacheprovider` | **135 collectés** ; la collecte n’exécute pas les assertions |
@@ -31,15 +54,15 @@ Ce matériel ne correspond pas au profil double cœur/4 Go. Aucun essai physique
 
 Les 72 tests sans base comprennent 45 tests de calculs/arrondis, valeurs limites, paramètres régionaux et empreintes, ainsi que 27 tests de formats d’entrée, refus d’accès anonyme et CSRF. Ils n’utilisent ni SQLite ni une base comptable simulée.
 
-Les **63 tests PostgreSQL restants** comprennent 28 tests API, 29 tests financiers et 6 tests de concurrence. Les tests financiers et API utilisent des transactions réellement commises ; les tests concurrents créent des connexions PostgreSQL distinctes, vérifiées par leurs identifiants serveur, et synchronisent le démarrage par barrière.
+Les **63 tests PostgreSQL réussis** comprennent 28 tests API, 29 tests financiers et 6 tests de concurrence. Les tests financiers et API utilisent des transactions réellement commises ; les tests concurrents créent des connexions PostgreSQL distinctes, vérifiées par leurs identifiants serveur, et synchronisent le démarrage par barrière. La suite a été lancée avec `ENVIRONMENT=test`, `DB_NAME=postgres` et `TEST_DB_NAME=test_azula_launch` ; pytest a créé et supprimé sa base de test séparée de l’instance Azula. Les tentatives sans PostgreSQL du tableau ci-dessus sont conservées comme historique.
 
 ## Frontend et navigateur
 
-Le build, les contrôles de types et ESLint ont réussi. Vitest : **18 tests réussis dans 5 fichiers**, dernière exécution 527 ms. Ces tests contrôlent les clés des cinq catalogues, les montants formatés sans conversion flottante, les clés d’idempotence, l’omission des filtres vides dans les requêtes de liste et la déconnexion après expiration de session. Chaque catalogue contient 191 clés.
+Le build dans Docker, `npm run check`, `npm run lint` et `npm run test` ont réussi. Vitest : **18 tests réussis dans 5 fichiers**. Ces tests contrôlent les clés des cinq catalogues, les montants formatés sans conversion flottante, les clés d’idempotence, l’omission des filtres vides dans les requêtes de liste et la déconnexion après expiration de session. Chaque catalogue contient 191 clés.
 
-Dernière exécution de `npm run test:e2e` avec `PLAYWRIGHT_CHANNEL=chrome` : **5 réussis, 1 ignoré**, 8,9 s. Le scénario ignoré est le parcours complet sur PostgreSQL, jamais remplacé par une simulation comptable. Les essais précédents ont permis de corriger le débordement mobile causé par un libellé accessible positionné hors du conteneur de tableau, ainsi que la confirmation d’un brouillon devenu modifié.
+Dernière exécution de `npm run test:e2e` avec `PLAYWRIGHT_CHANNEL=chrome` : **6 réussis, aucun ignoré, aucun flaky**, en **9,295 s**. Le rapport HTML Playwright confirme 5 tests `ui-chromium` et 1 test `workflow-chromium`. Le parcours réel PostgreSQL a réussi en 3,086 s : connexion, création d’un client, facture de 120, règlements de 50 puis 70, répétition idempotente, écritures équilibrées et affichage de la facture arabe. Les essais précédents ont permis de corriger un débordement mobile et la confirmation d’un brouillon devenu modifié.
 
-Les essais Playwright d’interface servent le véritable build par Django/Waitress avec sa politique CSP. Les réponses métier sont des **fixtures explicites limitées aux tests** : elles ne démontrent aucune persistance, connexion réussie à un vrai compte ou comptabilisation PostgreSQL. Le scénario `workflow-chromium` exige les identifiants éphémères et une base E2E réelle ; il reste ignoré localement faute de PostgreSQL.
+Les cinq essais Playwright d’interface servent le véritable build par Django/Waitress avec sa politique CSP, avec des **fixtures explicites limitées aux tests**. Le scénario `workflow-chromium` utilise au contraire l’API réelle et une base PostgreSQL séparée `azula_e2e`, avec des identifiants aléatoires éphémères et un conteneur publié uniquement sur `127.0.0.1:8081`. Le conteneur temporaire a été supprimé après les essais ; la base E2E est conservée. L’instance Azula sur 8080 reste active. L’enveloppe Python locale a rencontré après les tests une erreur d’affichage de la flèche Unicode sous Windows cp1252 ; elle a été corrigée en UTF-8. Les résultats ci-dessus ont été confirmés directement dans le rapport Playwright existant, sans relance ni échec applicatif.
 
 Les contrôles d’affichage portent sur les cinq langues, RTL, conservation des saisies après changement de langue ou coupure réseau, navigation et filtres, formulaire de facture mobile, fermeture de confirmation lorsqu’un brouillon est modifié et impression arabe. Les captures sont inspectées visuellement ; elles contiennent du texte arabe, des chiffres, `REF-A12` et `İstanbul`. Les dates latines sont isolées dans des éléments `bdi` pour conserver leur ordre en RTL.
 
@@ -51,7 +74,7 @@ Le bac à sable Windows a refusé certaines écritures dans les caches Vite/Ruff
 
 ## Taille et distribution du frontend
 
-Commande : `npm run size`, sur le build final. Périmètre : entrée, imports statiques transitifs, catalogue français et route de connexion, chaque fichier compressé séparément avec gzip. **65 317 octets**, soit **63,79 Kio** ; objectif de 250 Ko atteint pour ce périmètre uniquement.
+Mesure précédemment effectuée avec `npm run size` sur le build Windows : entrée, imports statiques transitifs, catalogue français et route de connexion, chaque fichier compressé séparément avec gzip. **65 317 octets**, soit **63,79 Kio** ; objectif de 250 Ko atteint pour ce périmètre uniquement. La taille n’a pas été remesurée sur le nouveau build Linux Docker.
 
 | Fichier compté sous `dist/` | Octets gzip |
 |---|---:|
@@ -70,11 +93,11 @@ Les autres langues, routes métier, CSS, HTML et icône ne sont pas comptés dan
 
 Vérification avec le client de test Django, debug désactivé : ressource principale HTTP 200, `Content-Encoding: gzip`, longueur 11 099 octets ; `/login` HTTP 200 avec CSP et absence de cache, `/index.html` avec revalidation. Ce contrôle valide la sélection de ressource compressée, sans mesurer la latence réseau ni la capacité sous charge.
 
-## Blocage PostgreSQL et contrôles à reprendre
+## Incident initial et contrôles restant à effectuer
 
-Le programme officiel `initdb.exe` est refusé par le contrôle d’applications Windows, code `0xc0e90002`, malgré l’autorisation d’exécution et la tentative de retrait du marquage de téléchargement. Aucune politique système n’a été désactivée. Les tentatives de connexion sur le port isolé 55432 ont expiré. Aucune base réelle n’a été consultée ou modifiée.
+Le programme natif `initdb.exe` avait été refusé par le contrôle d’applications Windows, code `0xc0e90002`. Aucune politique système n’a été désactivée. L’installation autorisée de Docker et WSL, puis le redémarrage Windows, ont permis de lancer PostgreSQL dans le conteneur Linux. Seules des bases locales de développement et de test ont été créées ; aucune base de production n’a été utilisée.
 
-Sur une machine équipée de Docker, reprendre exactement :
+Pour reproduire le démarrage et les tests sur une installation de développement :
 
 ```text
 python scripts/setup_env.py
@@ -86,6 +109,6 @@ docker compose exec backend python -m pytest
 
 Puis suivre la préparation `azula_e2e` et `npm run test:e2e` de [development.md](development.md), ou exécuter la CI fournie sur une branche autorisée. La CI est écrite, mais n’a pas été lancée à distance durant ce travail.
 
-Non réalisés : application des quatre migrations depuis une base vide, exécution des triggers PostgreSQL, rôle applicatif PostgreSQL restreint, scénario comptable réel 120/50/70 et ses retries, concurrence réelle, restauration de sauvegarde, générateur à 100 000 factures/10 000 clients, plans SQL, p95 API avec charge, mesures séparées réseau/rendu/mémoire. Docker Compose et ses images n’ont pas été exécutés sur cette machine.
+Non réalisés : rôle applicatif PostgreSQL restreint (le rôle de développement fourni par l’image a des droits étendus), restauration de sauvegarde, générateur à 100 000 factures/10 000 clients, plans SQL, p95 API avec charge, mesures séparées réseau/rendu/mémoire, macOS/Safari et matériel double cœur/4 Go. La relecture humaine des langues et l’impression sur les équipements cibles restent nécessaires.
 
-Les procédures correspondantes sont fournies ; aucun résultat ni benchmark n’est inventé. La première tâche restante est l’exécution complète PostgreSQL avant toute démonstration de comptabilité présentée comme validée.
+Les procédures correspondantes sont fournies ; aucun benchmark n’est revendiqué. Le parcours comptable de démonstration et les tests PostgreSQL sont maintenant exécutés avec succès ; cela ne constitue pas un audit fiscal ou une validation de production.
