@@ -10,7 +10,7 @@ Le lanceur Waitress accepte le port de l’hébergeur et un proxy HTTPS explicit
 
 Derniers contrôles : build Docker réussi ; **161 tests pytest en 68,28 s**, Ruff réussi ; contrôles TypeScript et ESLint réussis ; **18 tests Vitest** ; **6 tests Playwright en 10,9 s, aucun ignoré**. Ces derniers utilisent l’image actualisée sur 8081 et la base synthétique `azula_e2e` ; seul le mot de passe de son compte `e2e-admin` a été renouvelé pour l’essai. Le conteneur temporaire a été supprimé, la base conservée. Le compte et les données de l’instance 8080 n’ont pas été réinitialisés.
 
-Le profil Render Free + Neon Free est préparé dans `render.yaml` et [deployment.md](deployment.md). Les connexions aux hébergeurs et le déploiement distant restent à terminer ; aucun résultat HTTPS distant ni URL publique active n’est encore revendiqué. Les chiffres détaillés plus bas consignent également le lancement local précédent.
+Le profil Render Free + Neon Free est préparé dans `render.yaml` et [deployment.md](deployment.md). Les deux comptes sont connectés et une base Neon dédiée a été créée et migrée avec TLS `verify-full`, en utilisant explicitement `/etc/ssl/certs/ca-certificates.crt`. La CI GitHub du commit `9743c85` a également réussi : [exécution 34162556792](https://github.com/abdelmac/Azula/actions/runs/34162556792). Le premier déploiement Render reste à terminer ; aucune URL publique active n’est encore revendiquée. Les chiffres détaillés plus bas consignent également le lancement local précédent.
 
 ## Environnement observé
 
@@ -107,7 +107,7 @@ docker compose exec backend python manage.py makemigrations --check --dry-run
 docker compose exec backend python -m pytest
 ```
 
-Puis suivre la préparation `azula_e2e` et `npm run test:e2e` de [development.md](development.md), ou exécuter la CI fournie sur une branche autorisée. La CI est écrite, mais n’a pas été lancée à distance durant ce travail.
+Puis suivre la préparation `azula_e2e` et `npm run test:e2e` de [development.md](development.md), ou exécuter la CI fournie sur une branche autorisée. La CI GitHub du commit `9743c85` a réussi lors de la préparation du déploiement.
 
 Non réalisés : rôle applicatif PostgreSQL restreint (le rôle de développement fourni par l’image a des droits étendus), restauration de sauvegarde, générateur à 100 000 factures/10 000 clients, plans SQL, p95 API avec charge, mesures séparées réseau/rendu/mémoire, macOS/Safari et matériel double cœur/4 Go. La relecture humaine des langues et l’impression sur les équipements cibles restent nécessaires.
 

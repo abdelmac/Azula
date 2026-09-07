@@ -28,12 +28,12 @@ DJANGO_ALLOWED_HOSTS=localhost
 ALLOW_DEMO_DATA=0
 DATABASE_URL=A_REMPLACER_PAR_URL_NEON_DIRECTE_DU_PROPRIETAIRE
 DB_SSLMODE=verify-full
-DB_SSLROOTCERT=system
+DB_SSLROOTCERT=/etc/ssl/certs/ca-certificates.crt
 DB_CONN_MAX_AGE=0
 DB_TRANSACTION_POOLING=0
 ```
 
-Générer la clé locale dans un gestionnaire de mots de passe, avec au moins 64 caractères aléatoires. Cette clé temporaire sert aux commandes d’administration ; le mot de passe du premier utilisateur ne dépend pas de sa valeur. Conserver `channel_binding=require` si Neon l’inclut dans son URL. `verify-full` vérifie le certificat et son nom d’hôte, avec les autorités système du conteneur. [Connexion PostgreSQL sécurisée chez Neon](https://neon.com/blog/avoid-mitm-attacks-with-psql-postgres-16).
+Générer la clé locale dans un gestionnaire de mots de passe, avec au moins 64 caractères aléatoires. Cette clé temporaire sert aux commandes d’administration ; le mot de passe du premier utilisateur ne dépend pas de sa valeur. Conserver `channel_binding=require` si Neon l’inclut dans son URL. `verify-full` vérifie le certificat et son nom d’hôte, avec le fichier d’autorités Debian explicitement indiqué : la valeur `system` n’a pas trouvé le bon magasin avec le libpq binaire de cette image. La connexion Neon a réussi avec ce chemin sans réduire la vérification TLS. [Connexion PostgreSQL sécurisée chez Neon](https://neon.com/blog/avoid-mitm-attacks-with-psql-postgres-16).
 
 Construire la version qui sera publiée, puis appliquer les migrations sur cette nouvelle base :
 
@@ -58,7 +58,7 @@ Dans ce conteneur temporaire, installer les autorités racines puis ouvrir `psql
 ```text
 apt-get update
 apt-get install -y --no-install-recommends ca-certificates
-psql "host=A_REMPLACER dbname=A_REMPLACER user=A_REMPLACER sslmode=verify-full sslrootcert=system channel_binding=require" -W
+psql "host=A_REMPLACER dbname=A_REMPLACER user=A_REMPLACER sslmode=verify-full sslrootcert=/etc/ssl/certs/ca-certificates.crt channel_binding=require" -W
 ```
 
 Dans cette session, créer le rôle par SQL. Les rôles créés dans l’interface, l’API ou la CLI Neon héritent de `neon_superuser` ; un rôle créé par SQL n’en hérite pas. [Privilèges Neon](https://neon.com/docs/reference/compatibility).

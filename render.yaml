@@ -30,7 +30,7 @@ services:
       - key: DB_SSLMODE
         value: verify-full
       - key: DB_SSLROOTCERT
-        value: system
+        value: /etc/ssl/certs/ca-certificates.crt
       - key: DB_CONN_MAX_AGE
         value: "0"
       - key: DB_TRANSACTION_POOLING

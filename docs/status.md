@@ -31,7 +31,7 @@ Le profil Internet **Render Free + Neon Free** est préparé, avec port configur
 
 ## À vérifier sur une machine équipée
 
-Restent les générateurs volumétriques, plans SQL, p95 API, restauration d’une sauvegarde et validation d’un rôle PostgreSQL restreint. La CI fournie n’a pas été exécutée à distance. Pour utiliser l’instance locale, créer une période comptable ouverte dans les paramètres avant de valider la première facture.
+Restent les générateurs volumétriques, plans SQL, p95 API et restauration d’une sauvegarde. La CI GitHub du commit `9743c85` a réussi. Pour utiliser l’instance locale, créer une période comptable ouverte dans les paramètres avant de valider la première facture.
 
 Restent également la relecture humaine des cinq langues, l’impression arabe sur les polices/imprimantes cibles, Safari/macOS, les autres moteurs de navigateur et l’essai sur un vrai ordinateur double cœur/4 Go. Les essais avec fixtures visuelles ne remplacent pas la démonstration de données réellement comptabilisées.
 
