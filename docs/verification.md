@@ -1,8 +1,8 @@
 # Vérifications effectuées le 7 septembre 2026
 
-Azula fonctionne localement avec PostgreSQL dans Docker. Après adaptation du thème et des réglages d’hébergement, les **161 tests backend**, **18 tests frontend** et **6 tests navigateur**, dont le parcours comptable complet, ont réussi. Ce rapport précise les contrôles effectués et les limites restantes.
+Azula fonctionne localement avec PostgreSQL dans Docker et en ligne sur **[azula.onrender.com](https://azula.onrender.com)**. Après adaptation du thème et des réglages d’hébergement, les **161 tests backend**, **18 tests frontend** et **6 tests navigateur**, dont le parcours comptable complet, ont réussi. Les contrôles HTTPS de l’instance publique ont également réussi. Ce rapport précise les contrôles effectués et les limites restantes.
 
-## Thème bleu et préparation du déploiement Internet
+## Thème bleu et déploiement Internet
 
 Le thème reprend les bleus du logo fourni : marine, bleu vif et cyan, avec des fonds clairs ; les couleurs sémantiques des erreurs et statuts restent distinctes. La navigation, la connexion, les formulaires, l’impression et le favicon ont été adaptés. Le bouton primaire blanc sur `#075ad6` présente un contraste calculé de 6,10:1. La capture authentifiée locale a été inspectée après reconstruction Docker, sans erreur JavaScript.
 
@@ -10,7 +10,19 @@ Le lanceur Waitress accepte le port de l’hébergeur et un proxy HTTPS explicit
 
 Derniers contrôles : build Docker réussi ; **161 tests pytest en 68,28 s**, Ruff réussi ; contrôles TypeScript et ESLint réussis ; **18 tests Vitest** ; **6 tests Playwright en 10,9 s, aucun ignoré**. Ces derniers utilisent l’image actualisée sur 8081 et la base synthétique `azula_e2e` ; seul le mot de passe de son compte `e2e-admin` a été renouvelé pour l’essai. Le conteneur temporaire a été supprimé, la base conservée. Le compte et les données de l’instance 8080 n’ont pas été réinitialisés.
 
-Le profil Render Free + Neon Free est préparé dans `render.yaml` et [deployment.md](deployment.md). Les deux comptes sont connectés et une base Neon dédiée a été créée et migrée avec TLS `verify-full`, en utilisant explicitement `/etc/ssl/certs/ca-certificates.crt`. La CI GitHub du commit `9743c85` a également réussi : [exécution 34162556792](https://github.com/abdelmac/Azula/actions/runs/34162556792). Le premier déploiement Render reste à terminer ; aucune URL publique active n’est encore revendiquée. Les chiffres détaillés plus bas consignent également le lancement local précédent.
+Le service Render Free et la base Neon Free dédiés ont été créés à Francfort. Render indique le déploiement **`live`**, avec le commit exact `d9adab96940aa96b2c6a001c867b06e946a99440`. Sa CI GitHub a réussi : [exécution 34163887967](https://github.com/abdelmac/Azula/actions/runs/34163887967). La base a été migrée avec TLS `verify-full`, en utilisant explicitement `/etc/ssl/certs/ca-certificates.crt`. Le plan gratuit a été contrôlé dans les réponses des fournisseurs ; aucun abonnement payant, disque Render ni déploiement automatique n’a été activé. Le profil et les procédures sont dans `render.yaml` et [deployment.md](deployment.md).
+
+La base Internet est distincte de l’installation locale. Son rôle `azula_app`, créé par SQL, n’est ni propriétaire ni administrateur et ne peut pas modifier ou supprimer les écritures, règlements, événements d’audit et enregistrements d’idempotence existants. La connexion poolée a été vérifiée avec ce rôle et le chiffrement de la connexion cliente confirmé par `pgconn.ssl_in_use`. Le contrôle `pg_stat_ssl` sur le pooler décrit une autre liaison, entre le proxy et PostgreSQL. `migrate --check`, `check --deploy` et la création du premier administrateur ont réussi. Les secrets Internet, différents des accès locaux, sont hors Git et leurs fichiers limités au compte Windows courant. Aucun client ni facture n’a été créé sur cette base.
+
+Contrôles Chrome réellement exécutés sur `https://azula.onrender.com` :
+
+- `/healthz/` : HTTP 200, `status=ok`, cache désactivé ; PostgreSQL répond.
+- `/login` : HTTP 200 et en-tête HSTS ; connexion administrateur puis liste des factures authentifiée HTTP 200.
+- Cookie de session `Secure`, `HttpOnly` et `SameSite=Lax` ; lecture anonyme des factures refusée en 401 et POST client sans CSRF refusé en 403.
+- Couleur du bouton primaire `rgb(7, 90, 214)`, français sur écran 1440 × 960 et arabe RTL sur mobile 390 × 844, sans débordement horizontal ni erreur JavaScript.
+- Captures `.local/screenshots/azula-cloud-fr.png` et `.local/screenshots/azula-cloud-ar-mobile.png` inspectées après chargement de la liste ; langue du compte remise en français.
+
+Ces contrôles distants ne créent aucun client ni facture. Le parcours financier complet reste vérifié sur les bases PostgreSQL de test séparées. L’offre gratuite met le serveur en veille ; la restauration de sauvegarde et la capacité sous charge n’ont pas été testées. Les chiffres détaillés plus bas consignent également le lancement local précédent.
 
 ## Environnement observé
 
@@ -95,7 +107,7 @@ Vérification avec le client de test Django, debug désactivé : ressource princ
 
 ## Incident initial et contrôles restant à effectuer
 
-Le programme natif `initdb.exe` avait été refusé par le contrôle d’applications Windows, code `0xc0e90002`. Aucune politique système n’a été désactivée. L’installation autorisée de Docker et WSL, puis le redémarrage Windows, ont permis de lancer PostgreSQL dans le conteneur Linux. Seules des bases locales de développement et de test ont été créées ; aucune base de production n’a été utilisée.
+Le programme natif `initdb.exe` avait été refusé par le contrôle d’applications Windows, code `0xc0e90002`. Aucune politique système n’a été désactivée. L’installation autorisée de Docker et WSL, puis le redémarrage Windows, ont permis de lancer PostgreSQL dans le conteneur Linux. Cette première étape ne concernait que des bases locales de développement et de test ; la nouvelle base Internet a ensuite été initialisée séparément comme décrit plus haut.
 
 Pour reproduire le démarrage et les tests sur une installation de développement :
 
@@ -109,6 +121,6 @@ docker compose exec backend python -m pytest
 
 Puis suivre la préparation `azula_e2e` et `npm run test:e2e` de [development.md](development.md), ou exécuter la CI fournie sur une branche autorisée. La CI GitHub du commit `9743c85` a réussi lors de la préparation du déploiement.
 
-Non réalisés : rôle applicatif PostgreSQL restreint (le rôle de développement fourni par l’image a des droits étendus), restauration de sauvegarde, générateur à 100 000 factures/10 000 clients, plans SQL, p95 API avec charge, mesures séparées réseau/rendu/mémoire, macOS/Safari et matériel double cœur/4 Go. La relecture humaine des langues et l’impression sur les équipements cibles restent nécessaires.
+Non réalisés : restauration de sauvegarde, générateur à 100 000 factures/10 000 clients, plans SQL, p95 API avec charge, mesures séparées réseau/rendu/mémoire, macOS/Safari et matériel double cœur/4 Go. Le rôle de développement local fourni par l’image garde des droits étendus ; le rôle applicatif restreint est en place sur Neon. La relecture humaine des langues et l’impression sur les équipements cibles restent nécessaires.
 
 Les procédures correspondantes sont fournies ; aucun benchmark n’est revendiqué. Le parcours comptable de démonstration et les tests PostgreSQL sont maintenant exécutés avec succès ; cela ne constitue pas un audit fiscal ou une validation de production.

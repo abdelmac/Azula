@@ -19,7 +19,7 @@
 
 Contrôles réellement réussis après adaptation du thème bleu et préparation de l’hébergement : **161 tests Python**, dont les 63 tests PostgreSQL API/comptabilité/concurrence et le contrôle de santé PostgreSQL, **18 tests Vitest**, **6 tests Chrome sans aucun ignoré**, build/types/lints. Le parcours réel client → facture 120 → règlements 50/70 → journal → impression arabe a réussi sur la base séparée `azula_e2e`. La mesure antérieure du JavaScript du premier écran sur Windows est de 65 317 octets gzip ; elle n’a pas été remesurée dans Docker.
 
-Le profil Internet **Render Free + Neon Free** est préparé, avec port configurable, proxy HTTPS explicite, URL PostgreSQL/TLS et sonde de santé. Les comptes d’hébergement et le déploiement distant restent à terminer ; voir [deployment.md](deployment.md).
+L’instance Internet **[azula.onrender.com](https://azula.onrender.com)** est active sur **Render Free + Neon Free**, à Francfort, avec le commit `d9adab9`. Le rôle PostgreSQL est restreint et sa connexion utilise TLS `verify-full`. La sonde PostgreSQL, la connexion administrateur, les cookies sécurisés, le refus des accès anonymes et des actions sans CSRF, le thème bleu et l’affichage arabe mobile ont été vérifiés. Aucun client ni facture d’essai n’a été créé en ligne. Les accès Internet sont dans `.local/azula-cloud-access.json` sur le poste de déploiement ; voir [deployment.md](deployment.md).
 
 ## Démarrage local vérifié
 
@@ -31,7 +31,7 @@ Le profil Internet **Render Free + Neon Free** est préparé, avec port configur
 
 ## À vérifier sur une machine équipée
 
-Restent les générateurs volumétriques, plans SQL, p95 API et restauration d’une sauvegarde. La CI GitHub du commit `9743c85` a réussi. Pour utiliser l’instance locale, créer une période comptable ouverte dans les paramètres avant de valider la première facture.
+Restent les générateurs volumétriques, plans SQL, p95 API et restauration d’une sauvegarde. La CI GitHub du commit déployé `d9adab9` a réussi. Sur chaque instance, créer une période comptable ouverte dans les paramètres avant de valider la première facture. Les quotas gratuits et la mise en veille doivent être pris en compte ; aucun abonnement payant ni déploiement automatique n’a été activé.
 
 Restent également la relecture humaine des cinq langues, l’impression arabe sur les polices/imprimantes cibles, Safari/macOS, les autres moteurs de navigateur et l’essai sur un vrai ordinateur double cœur/4 Go. Les essais avec fixtures visuelles ne remplacent pas la démonstration de données réellement comptabilisées.
 

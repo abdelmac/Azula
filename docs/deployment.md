@@ -1,6 +1,8 @@
 # Déploiement Internet : commencer à 0 €
 
-Le profil [render.yaml](../render.yaml) prépare **un service Docker Render Free à Francfort**, relié à **PostgreSQL Neon Free**. Le même conteneur sert Vue et Django sur une seule origine HTTPS ; les données et sessions restent dans PostgreSQL. Ce fichier ne crée aucune ressource tant qu’il n’est pas importé dans un compte Render. Aucun hébergement connecté ni déploiement réussi n’est présumé par ce guide.
+L’instance **[azula.onrender.com](https://azula.onrender.com)** a été déployée et vérifiée le **7 septembre 2026**, avec le commit `d9adab9`, sur **Render Free à Francfort** et **PostgreSQL Neon Free** dans la même région. Le même conteneur sert Vue et Django sur une seule origine HTTPS ; les données et sessions restent dans PostgreSQL. Aucun abonnement payant n’a été souscrit et les déploiements automatiques sont désactivés.
+
+Cette installation a été créée par l’API officielle Render avec les paramètres du profil [render.yaml](../render.yaml). La clé Django, générée localement avec plus de 64 caractères aléatoires, et l’URL du rôle applicatif ont été transmises comme variables secrètes, sans passer dans les arguments du terminal ni dans Git. Les accès Internet se trouvent dans `.local/azula-cloud-access.json`, avec des droits limités au compte Windows courant. La base locale reste distincte. Les étapes ci-dessous permettent de reproduire l’installation sur une nouvelle base ; ne pas recréer les ressources de l’instance existante.
 
 L’offre convient au lancement d’une démonstration accessible sur Internet. Le tarif visé est 0 € dans les quotas gratuits, sans domaine acheté. Un usage métier continu demandera de revoir disponibilité, sauvegardes et capacité.
 
@@ -109,7 +111,7 @@ Avant de considérer l’instance disponible, vérifier sur l’URL réellement 
 
 Render génère initialement une clé de 256 bits encodée sur 44 caractères. Django peut signaler `security.W009` car son contrôle demande 50 caractères. Pour un contrôle sans avertissement, remplacer le secret généré par une clé aléatoire d’au moins 64 caractères **avant les premières connexions**, puis redéployer ; ne pas masquer le contrôle.
 
-Documenter les résultats réellement obtenus dans [verification.md](verification.md). Tant que ces étapes distantes ne sont pas exécutées, le dépôt est préparé au déploiement, sans attestation de disponibilité Internet.
+Documenter les résultats réellement obtenus dans [verification.md](verification.md). Pour l’instance indiquée au début de ce guide, ces contrôles distants ont réussi ; les parcours financiers ont été exécutés sur PostgreSQL de test séparé.
 
 ## Quotas et évolution du budget
 

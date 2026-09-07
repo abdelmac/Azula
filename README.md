@@ -29,9 +29,9 @@ Sous macOS, employer `python3` à la place de `python` si nécessaire. Pour un e
 
 ## Déploiement Internet à 0 €
 
-Le profil [render.yaml](render.yaml) prépare l’application Docker sur **Render Free**, avec une base **Neon Free** séparée. Suivre [le guide de déploiement](docs/deployment.md) pour les comptes, les migrations, le rôle PostgreSQL restreint, les secrets et HTTPS. Le profil peut ensuite évoluer vers des offres payantes sans réécrire l’application.
+L’instance **[azula.onrender.com](https://azula.onrender.com)** est déployée sur **Render Free**, avec une base **Neon Free** séparée, à Francfort. La connexion HTTPS et le thème bleu ont été vérifiés le 7 septembre 2026. Les accès Internet sont conservés sur le poste de déploiement dans `.local/azula-cloud-access.json`, hors Git ; ils sont distincts des accès locaux.
 
-Render Free met l’application en veille après 15 minutes sans activité ; le premier accès peut être plus lent. Les données restent dans Neon, dans les quotas gratuits. La présence du profil ne signifie pas qu’une instance Internet a déjà été publiée.
+Le profil [render.yaml](render.yaml) et [le guide de déploiement](docs/deployment.md) documentent l’installation et son évolution vers des offres payantes sans réécrire l’application. Render Free met l’application en veille après 15 minutes sans activité ; le premier accès peut être plus lent. Les données restent dans Neon, dans les quotas gratuits. Aucun abonnement payant n’a été souscrit ; les déploiements automatiques sont désactivés.
 
 ## Parcours de démonstration manuel
 
@@ -64,7 +64,7 @@ Le générateur volumétrique crée des **brouillons avec lignes**, sans fabriqu
 
 ## Vérifications et documentation
 
-Les résultats réellement obtenus et les contrôles empêchés par la machine sont consignés dans [le rapport de vérification](docs/verification.md). La CI fournie lance les migrations depuis une base vide, les tests PostgreSQL, les contrôles frontend et Playwright ; sa présence ne signifie pas qu’elle a déjà été exécutée.
+Les résultats réellement obtenus et leurs limites sont consignés dans [le rapport de vérification](docs/verification.md). La CI lance les migrations depuis une base vide, les tests PostgreSQL, les contrôles frontend et Playwright ; elle a réussi pour le [commit déployé `d9adab9`](https://github.com/abdelmac/Azula/actions/runs/34163887967).
 
 - [Installation et développement Windows/macOS](docs/development.md)
 - [Architecture, permissions et règles comptables](docs/architecture.md)
