@@ -35,6 +35,8 @@ Le profil [render.yaml](render.yaml) et [le guide de déploiement](docs/deployme
 
 ## Parcours de démonstration manuel
 
+Le catalogue comprend maintenant les classes d’articles, entrepôts, unités, prix d’achat et de vente, caractéristiques et photos par URL HTTPS. Consulter [le guide de la liste des prix](docs/catalogue.md) pour les paramètres, filtres et l’impression. Cette évolution nécessite la migration `0005_catalog_parameters` sur chaque installation ; les contrôles locaux et l’état de publication sont détaillés dans [verification.md](docs/verification.md).
+
 1. Se connecter avec l’administrateur créé. Ajouter une période ouverte dans les paramètres.
 2. Créer un client, puis une facture avec une ligne : quantité `1`, prix hors taxe `100.00`, taxe de test `20`.
 3. Enregistrer le brouillon : les montants calculés par le serveur sont `100.00`, `20.00`, `120.00`.

@@ -15,7 +15,10 @@ from .models import (
     Payment,
     Period,
     Product,
+    ProductCategory,
+    Unit,
     User,
+    Warehouse,
 )
 
 
@@ -52,7 +55,7 @@ class InspectionAdmin(admin.ModelAdmin):
         return super().get_exclude(request, obj)
 
 
-for model in (Company, User, Customer, Product, Invoice, InvoiceLine, Payment, Account, Journal, Period, Entry, EntryLine, AuditEvent):
+for model in (Company, User, Customer, Product, ProductCategory, Warehouse, Unit, Invoice, InvoiceLine, Payment, Account, Journal, Period, Entry, EntryLine, AuditEvent):
     admin.site.register(model, InspectionAdmin)
 
 admin.site.site_header = "Azula — inspection"

@@ -16,7 +16,7 @@ class PrivateResponseMiddleware:
         if not request.path.startswith("/admin/"):
             response["Content-Security-Policy"] = (
                 "default-src 'self'; script-src 'self'; style-src 'self'; "
-                "img-src 'self' data:; font-src 'self'; connect-src 'self'; "
+                "img-src 'self' data: https:; font-src 'self'; connect-src 'self'; "
                 "object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
             )
         return response

@@ -30,6 +30,8 @@
 @media print {
   :root, body { background: white !important; }
   .no-print, .skip-link, .sidebar, .topbar, .app-footer { display: none !important; }
+  .app-layout { display: block; min-block-size: 0; }
+  .main-content { max-inline-size: none; padding: 0; margin: 0; }
   .print-view { padding: 0 !important; background: white !important; min-block-size: 0; }
   .invoice-paper { max-inline-size: none; min-block-size: 0; padding: 0; margin: 0; border: 0; box-shadow: none; }
   .print-header { padding-block-end: 6mm; }

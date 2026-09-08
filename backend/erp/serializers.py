@@ -1,5 +1,6 @@
 import re
 from decimal import Decimal
+from urllib.parse import urlsplit
 
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
@@ -17,7 +18,10 @@ from .models import (
     Payment,
     Period,
     Product,
+    ProductCategory,
+    Unit,
     User,
+    Warehouse,
 )
 
 
@@ -34,6 +38,13 @@ class StrictInputMixin:
 
 
 class ExactDecimalField(serializers.DecimalField):
+    def validate_empty_values(self, data):
+        # DRF assimile normalement une chaîne vide à null pour les décimaux
+        # facultatifs ; l'API exige ici un null JSON explicite.
+        if self.allow_null and isinstance(data, str) and not data.strip():
+            raise serializers.ValidationError("invalid_amount")
+        return super().validate_empty_values(data)
+
     def to_internal_value(self, data):
         if not isinstance(data, str) or not re.fullmatch(r"-?\d+(?:\.\d+)?", data):
             raise serializers.ValidationError("invalid_amount")
@@ -94,15 +105,84 @@ class CustomerSerializer(StrictInputMixin, serializers.ModelSerializer):
         read_only_fields = ("id",)
 
 
+class CatalogReferenceSerializer(StrictInputMixin, serializers.ModelSerializer):
+    class Meta:
+        fields = ("id", "code", "name", "archived")
+        read_only_fields = ("id",)
+        validators = []  # L'unicité est contrôlée sous verrou dans la société.
+
+
+class ProductCategorySerializer(CatalogReferenceSerializer):
+    class Meta(CatalogReferenceSerializer.Meta):
+        model = ProductCategory
+
+
+class WarehouseSerializer(CatalogReferenceSerializer):
+    class Meta(CatalogReferenceSerializer.Meta):
+        model = Warehouse
+
+
+class UnitSerializer(CatalogReferenceSerializer):
+    class Meta(CatalogReferenceSerializer.Meta):
+        model = Unit
+
+
 class ProductSerializer(StrictInputMixin, serializers.ModelSerializer):
     unit_price = ExactDecimalField(max_digits=22, decimal_places=6, min_value=Decimal("0"))
+    purchase_price = ExactDecimalField(max_digits=22, decimal_places=6, min_value=Decimal("0"), allow_null=True, required=False)
     tax_rate = ExactDecimalField(max_digits=7, decimal_places=4, min_value=Decimal("0"), max_value=Decimal("100"))
+    category = serializers.PrimaryKeyRelatedField(queryset=ProductCategory.objects.none(), allow_null=True, required=False)
+    unit = serializers.PrimaryKeyRelatedField(queryset=Unit.objects.none(), allow_null=True, required=False)
+    warehouses = serializers.PrimaryKeyRelatedField(queryset=Warehouse.objects.none(), many=True, required=False)
+    category_name = serializers.CharField(source="category.name", read_only=True, default=None)
+    unit_name = serializers.CharField(source="unit.name", read_only=True, default=None)
 
     class Meta:
         model = Product
-        fields = ("id", "reference", "name", "unit_price", "tax_rate", "archived")
+        fields = (
+            "id", "reference", "name", "unit_price", "purchase_price", "tax_rate", "archived",
+            "category", "category_name", "unit", "unit_name", "warehouses", "specifications", "image_url",
+        )
         read_only_fields = ("id",)
         validators = []  # L'unicité est évaluée explicitement dans la société.
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get("request")
+        company_id = getattr(getattr(request, "user", None), "company_id", None)
+        for name, model in (("category", ProductCategory), ("unit", Unit), ("warehouses", Warehouse)):
+            field = self.fields[name]
+            if name == "warehouses":
+                field = field.child_relation
+            field.queryset = model.objects.filter(company_id=company_id)
+
+    def validate(self, data):
+        self.validate_catalog_relations(data)
+        return data
+
+    def validate_image_url(self, value):
+        if value:
+            url = urlsplit(value)
+            if url.scheme != "https" or url.username is not None or url.password is not None:
+                raise serializers.ValidationError("invalid_input")
+        return value
+
+    def validate_catalog_relations(self, data):
+        """Rejoué sous verrou société pour vérifier l'état courant des références."""
+        company_id = self.context["request"].user.company_id
+        for name, model in (("category", ProductCategory), ("unit", Unit), ("warehouses", Warehouse)):
+            if name not in data:
+                continue
+            values = data[name] if name == "warehouses" else [data[name]] if data[name] else []
+            requested_ids = {value.pk for value in values}
+            if not requested_ids:
+                continue
+            allowed = model.objects.filter(company_id=company_id, pk__in=requested_ids)
+            current = set()
+            if self.instance:
+                current = set(self.instance.warehouses.values_list("id", flat=True)) if name == "warehouses" else {getattr(self.instance, name + "_id")}
+            if allowed.count() != len(requested_ids) or allowed.filter(archived=True).exclude(pk__in=current).exists():
+                raise serializers.ValidationError({name: "invalid_input"})
 
 
 class DraftLineSerializer(StrictInputMixin, serializers.Serializer):

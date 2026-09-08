@@ -1,4 +1,27 @@
-# Vérifications effectuées le 7 septembre 2026
+# Vérifications effectuées jusqu’au 8 septembre 2026
+
+## Paramètres de catalogue — 8 septembre 2026
+
+L’évolution décrite dans [catalogue.md](catalogue.md) ajoute les classes, entrepôts, unités, prix d’achat distinct du prix de vente, caractéristiques et photos HTTPS. La liste des prix comporte recherche F3, filtres combinés, tri, archivage et impression de la page courante. Les 39 nouveaux textes sont traduits dans chacun des cinq catalogues (230 clés par langue).
+
+| Contrôle exécuté | Résultat |
+| --- | --- |
+| `python -m pytest -p no:cacheprovider` dans Docker, sources actuelles montées en lecture seule | **212 réussis en 116,99 s**, base séparée `test_azula_catalog`, créée et supprimée par pytest |
+| `ruff check` complet dans le conteneur | Réussi ; contrôles ciblés après correction des chaînes vides également réussis |
+| `manage.py makemigrations --check --dry-run` | Aucun changement manquant ; connexion au catalogue PostgreSQL système, sans migration d’une base métier |
+| `npm run check`, `npm run lint`, `npm run test` | Réussis ; **18 tests Vitest** |
+| `npm run build`, puis `docker compose build backend` | Réussis ; le build Docker final inclut les derniers ajustements des champs et filtres |
+| Playwright avec Chrome, exécuté par `.local/rerun_docker_e2e.py` | **9 réussis en 22,0 s, aucun ignoré** : 7 essais avec fixtures explicites et 2 parcours PostgreSQL réels sur `azula_e2e` |
+
+Les **51 nouveaux cas backend** couvrent les permissions, l’isolement entre sociétés des relations et recherches, les prix décimaux exacts et inconnus, les URL HTTPS sans identifiants, les références archivées, le rollback de l’audit et la conservation du snapshot d’une facture validée. Un test exécute réellement la migration `0004 → 0005` et vérifie les données antérieures, uniquement dans la base pytest. La première exécution avait relevé une chaîne vide acceptée comme prix d’achat inconnu ; le champ exact refuse désormais les chaînes vides ou blanches et n’accepte que `null` pour un prix inconnu. La suite complète a ensuite réussi.
+
+Le nouveau parcours navigateur réel crée une classe, un entrepôt, une unité, un article, puis vérifie recherche et filtres, affichage achat/vente, édition d’un prix d’achat devenu inconnu, archivage/restauration et utilisation du prix de vente en facture. Le prix `12.345678` est conservé ; la ligne facturée est arrondie à `12.35` HT, `2.47` de taxe et `14.82` TTC. Le parcours comptable antérieur avec règlements de 50 puis 70 réussit également.
+
+Les nouveaux essais d’interface vérifient les saisies après erreur et changement de langue, un prix au-delà de la précision entière de JavaScript, le rôle lecture seule, une photo HTTPS interceptée par une fixture, le raccourci F3 et l’impression. Les captures `catalogue-postgresql-desktop.png` et `catalogue-ar-mobile.png` dans `frontend/test-results/` ont été inspectées : thème bleu, listes et caractères mixtes lisibles, pas de débordement global sur mobile 390 × 844 ; la table large défile dans son propre conteneur. Un PDF de la liste avec fixtures a été généré par Chrome ; aucune imprimante réelle ni URL de photo externe réelle n’a été utilisée pour ces tests.
+
+La migration a été appliquée uniquement à `azula_e2e` et aux bases pytest. Le conteneur temporaire du port 8081 a été supprimé, la base synthétique conservée. **Cette évolution du catalogue n’est pas encore publiée sur Render** : l’instance Internet et l’instance locale du port 8080 conservent leur version précédente. La règle `AGENTS.md` « Aucune opération sur une base réelle » impose de clarifier l’autorisation avant la sauvegarde et la migration de la base Internet existante. Les résultats du déploiement du 7 septembre ci-dessous concernent cette version précédente.
+
+## Version publiée le 7 septembre 2026
 
 Azula fonctionne localement avec PostgreSQL dans Docker et en ligne sur **[azula.onrender.com](https://azula.onrender.com)**. Après adaptation du thème et des réglages d’hébergement, les **161 tests backend**, **18 tests frontend** et **6 tests navigateur**, dont le parcours comptable complet, ont réussi. Les contrôles HTTPS de l’instance publique ont également réussi. Ce rapport précise les contrôles effectués et les limites restantes.
 

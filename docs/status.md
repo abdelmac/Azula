@@ -1,5 +1,9 @@
 # État de la première tranche
 
+## Évolution du catalogue — 8 septembre 2026
+
+La [liste des prix](catalogue.md) et ses paramètres sont implémentés : classes, entrepôts, unités, prix d’achat, caractéristiques, photos HTTPS, filtres et impression. **212 tests backend, 18 tests Vitest et 9 tests Chrome réussis**, avec migration vérifiée sur PostgreSQL de test. Cette évolution reste à publier : aucune migration n’a été appliquée à la base Internet existante. Les résultats ci-dessous décrivent aussi la version précédemment déployée.
+
 ## Implémenté
 
 - Socle Vue 3/TypeScript/Vite/Router/I18n et Django REST Framework, PostgreSQL exclusif.

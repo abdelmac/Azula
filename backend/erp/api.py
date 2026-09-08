@@ -36,7 +36,10 @@ from .models import (
     LoginAttempt,
     Period,
     Product,
+    ProductCategory,
+    Unit,
     User,
+    Warehouse,
 )
 from .permissions import ADMIN_ROLES, FINANCE_ROLES, MANAGE_ROLES, CompanyPermission
 from .serializers import (
@@ -53,8 +56,11 @@ from .serializers import (
     MeSerializer,
     PaymentInputSerializer,
     PeriodSerializer,
+    ProductCategorySerializer,
     ProductSerializer,
+    UnitSerializer,
     UserSerializer,
+    WarehouseSerializer,
     money,
 )
 from .services import (
@@ -269,12 +275,16 @@ class ReferenceViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.
             Company.objects.select_for_update().get(pk=self.request.user.company_id)
             if serializer.instance is not None:
                 serializer.instance = type(serializer.instance).objects.select_for_update().get(pk=serializer.instance.pk, company=self.request.user.company)
-            if isinstance(serializer, ProductSerializer) and "reference" in serializer.validated_data:
-                duplicate = Product.objects.filter(company=self.request.user.company, reference=serializer.validated_data["reference"])
+            model = serializer.Meta.model
+            unique_field = "reference" if model is Product else "code" if model in {ProductCategory, Warehouse, Unit} else None
+            if unique_field and unique_field in serializer.validated_data:
+                duplicate = model.objects.filter(company=self.request.user.company, **{unique_field: serializer.validated_data[unique_field]})
                 if serializer.instance:
                     duplicate = duplicate.exclude(pk=serializer.instance.pk)
                 if duplicate.exists():
                     raise exceptions.ValidationError("invalid_input")
+            if isinstance(serializer, ProductSerializer):
+                serializer.validate_catalog_relations(serializer.validated_data)
             created = serializer.instance is None
             obj = serializer.save(company=self.request.user.company)
             AuditEvent.objects.create(company=self.request.user.company, actor=self.request.user, actor_name=self.request.user.username, action="reference.created" if created else "reference.updated", object_type=type(obj).__name__.lower(), object_id=str(obj.pk), metadata={"fields": sorted(serializer.validated_data)})
@@ -290,10 +300,49 @@ class CustomerViewSet(ReferenceViewSet):
 
 
 class ProductViewSet(ReferenceViewSet):
-    queryset = Product.objects.all()
+    queryset = Product.objects.select_related("category", "unit").prefetch_related("warehouses")
     serializer_class = ProductSerializer
-    search_fields = ["name", "reference"]
-    ordering_fields = ["id", "name", "reference", "unit_price", "archived"]
+    search_fields = ["name", "reference", "specifications", "category__name", "category__code"]
+    ordering_fields = ["id", "name", "reference", "unit_price", "purchase_price", "archived"]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        for field, model, lookup in (
+            ("product", Product, "pk"), ("category", ProductCategory, "category_id"),
+            ("unit", Unit, "unit_id"), ("warehouse", Warehouse, "warehouses__id"),
+        ):
+            value = self.request.query_params.get(field)
+            if value is not None:
+                if not value.isascii() or not value.isdecimal() or len(value) > 18:
+                    raise exceptions.ValidationError("invalid_input")
+                obj = get_object_or_404(model, company_id=self.request.user.company_id, pk=value)
+                queryset = queryset.filter(**{lookup: obj.pk})
+        specifications = self.request.query_params.get("specifications")
+        if specifications is not None:
+            if len(specifications) > 128:
+                raise exceptions.ValidationError("invalid_input")
+            queryset = queryset.filter(specifications__icontains=specifications)
+        return queryset
+
+
+class CatalogReferenceViewSet(ReferenceViewSet):
+    search_fields = ["name", "code"]
+    ordering_fields = ["id", "name", "code", "archived"]
+
+
+class ProductCategoryViewSet(CatalogReferenceViewSet):
+    queryset = ProductCategory.objects.all()
+    serializer_class = ProductCategorySerializer
+
+
+class WarehouseViewSet(CatalogReferenceViewSet):
+    queryset = Warehouse.objects.all()
+    serializer_class = WarehouseSerializer
+
+
+class UnitViewSet(CatalogReferenceViewSet):
+    queryset = Unit.objects.all()
+    serializer_class = UnitSerializer
 
 
 class InvoiceViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, CompanyViewSet):

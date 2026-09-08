@@ -5,7 +5,9 @@ export interface User { id: number; username: string; role: Role; language: Lang
 export interface Company { id: number; name: string; address: string; email: string; currency: string; precision: number; document_language: Language; locale: string }
 export interface Page<T> { count: number; next: string | null; previous: string | null; results: T[] }
 export interface Customer { id: number; name: string; email: string; address: string; tax_id: string; archived: boolean }
-export interface Product { id: number; reference: string; name: string; unit_price: string; tax_rate: string; archived: boolean }
+export interface CatalogReference { id: number; code: string; name: string; archived: boolean }
+export type CatalogKind = 'product-categories' | 'warehouses' | 'units'
+export interface Product { id: number; reference: string; name: string; unit_price: string; tax_rate: string; archived: boolean; category?: number | null; category_name?: string; unit?: number | null; unit_name?: string; warehouses?: number[]; purchase_price?: string | null; specifications?: string; image_url?: string }
 export interface InvoiceLine { id?: number; product: number | null; description: string; quantity: string; unit_price: string; tax_rate: string; net?: string; tax?: string; total?: string }
 export interface Payment { id: number; amount: string; date: string; reference: string }
 export interface Snapshot { company: Pick<Company, 'name' | 'address' | 'email' | 'currency'>; customer: Pick<Customer, 'name' | 'address' | 'email' | 'tax_id'>; number: string; issue_date: string; due_date: string; lines: InvoiceLine[]; currency: string; precision: number; locale: string; document_language: Language; rounding_policy?: string; rounding?: { mode: string; scope: string; tax_base: string }; net: string; tax: string; total: string }

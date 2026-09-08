@@ -7,7 +7,7 @@ export const router = createRouter({
     { path: '/login', component: () => import('./views/LoginView.vue'), meta: { public: true, title: 'signIn' } },
     { path: '/', redirect: '/invoices' },
     { path: '/customers', component: () => import('./views/ReferencesView.vue'), props: { kind: 'customers' }, meta: { title: 'customers' } },
-    { path: '/products', component: () => import('./views/ReferencesView.vue'), props: { kind: 'products' }, meta: { title: 'products' } },
+    { path: '/products', component: () => import('./views/ProductsView.vue'), meta: { title: 'priceList' } },
     { path: '/invoices', component: () => import('./views/InvoicesView.vue'), meta: { title: 'invoices' } },
     { path: '/invoices/new', component: () => import('./views/InvoiceView.vue'), meta: { title: 'newInvoice' } },
     { path: '/invoices/:id', component: () => import('./views/InvoiceView.vue'), meta: { title: 'invoice' } },

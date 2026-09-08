@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
-from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
+from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator, URLValidator
 from django.db import models
 from django.db.models import Q, Sum
 from django.utils import timezone
@@ -54,17 +54,47 @@ class Customer(CompanyOwned):
         indexes = [models.Index(fields=["company", "archived", "name"])]
 
 
+class CatalogReference(CompanyOwned):
+    code = models.CharField(max_length=40)
+    name = models.CharField(max_length=150)
+    archived = models.BooleanField(default=False)
+
+    class Meta:
+        abstract = True
+        constraints = [models.UniqueConstraint(fields=["company", "code"], name="%(class)s_company_code")]
+        indexes = [models.Index(fields=["company", "archived", "name"])]
+
+
+class ProductCategory(CatalogReference):
+    pass
+
+
+class Warehouse(CatalogReference):
+    pass
+
+
+class Unit(CatalogReference):
+    pass
+
+
 class Product(CompanyOwned):
     reference = models.CharField(max_length=80)
     name = models.CharField(max_length=200)
     unit_price = models.DecimalField(**MONEY)
+    purchase_price = models.DecimalField(**MONEY, null=True, blank=True)
     tax_rate = models.DecimalField(max_digits=7, decimal_places=4, default=Decimal("0"))
+    category = models.ForeignKey(ProductCategory, on_delete=models.PROTECT, null=True, blank=True, related_name="products")
+    unit = models.ForeignKey(Unit, on_delete=models.PROTECT, null=True, blank=True, related_name="products")
+    warehouses = models.ManyToManyField(Warehouse, blank=True, related_name="products")
+    specifications = models.TextField(max_length=4000, blank=True)
+    image_url = models.URLField(max_length=1000, blank=True, validators=[URLValidator(schemes=["https"])])
     archived = models.BooleanField(default=False)
 
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=["company", "reference"], name="product_company_reference"),
             models.CheckConstraint(condition=Q(unit_price__gte=0), name="product_nonnegative_price"),
+            models.CheckConstraint(condition=Q(purchase_price__isnull=True) | Q(purchase_price__gte=0), name="product_nonnegative_purchase"),
             models.CheckConstraint(condition=Q(tax_rate__gte=0, tax_rate__lte=100), name="product_tax_range"),
         ]
         indexes = [models.Index(fields=["company", "archived", "name"])]
