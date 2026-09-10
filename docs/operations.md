@@ -31,9 +31,21 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO azula_app
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO azula_app;
 REVOKE UPDATE, DELETE, TRUNCATE ON erp_entry, erp_entryline, erp_payment,
     erp_auditevent, erp_idempotencyrecord FROM azula_app;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON django_migrations FROM azula_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON connections_externalrequest,
+    connections_externaltransaction, connections_integrationkey,
+    connections_banktransaction FROM azula_app;
+GRANT UPDATE (revoked_at) ON connections_integrationkey TO azula_app;
+GRANT UPDATE (invoice_id, payment_id, reconciled_at)
+    ON connections_banktransaction TO azula_app;
+REVOKE DELETE, TRUNCATE ON erp_productcategory, erp_unit, erp_warehouse,
+    erp_customerprice, connections_integration, connections_bankaccount FROM azula_app;
+REVOKE UPDATE, TRUNCATE ON erp_product_warehouses FROM azula_app;
 ```
 
 Le rôle applicatif n’est propriétaire d’aucune table ni fonction et ne dispose pas de `CREATEDB`, `CREATEROLE` ou `SUPERUSER`. Les sessions et brouillons doivent rester modifiables. Les triggers protègent les lignes financières ; un administrateur de base peut toujours modifier le schéma. Il n’existe aucune promesse d’audit inviolable.
+
+Le bloc précédent concerne une installation après toutes les migrations. Pour une mise à jour existante, conserver les ACL historiques et accorder seulement les droits nécessaires sur les tables ajoutées. Les mises à jour de clés et de transactions bancaires sont limitées aux colonnes citées ; les identifiants, empreintes et montants ne sont pas modifiables par le rôle applicatif.
 
 ## Connexion et comptes
 
@@ -76,3 +88,5 @@ Noter la durée et les résultats. La restauration n’a été vérifiée que si
 ## Mises à jour
 
 Sauvegarder et tester la restauration, appliquer les migrations d’abord sur une copie, exécuter les tests, puis arrêter temporairement les écritures durant la migration réelle. Aucun retour arrière financier par suppression n’est proposé. Conserver les numéros et clés d’idempotence. Revoir les règles du pays choisi avant tout usage comptable réel.
+
+La procédure préparée pour l’évolution ERP du 10 septembre utilise le moteur de migrations dans une transaction et vérifie les empreintes des anciennes données, ACL et protections avant commit. Elle n’exécute pas le signal Django `post_migrate` : les nouvelles permissions Django standards ne sont pas initialisées par cette procédure. Azula utilise ses rôles, `CompanyPermission` et les portées API ; ces autorisations restent opérationnelles. Une initialisation ciblée des métadonnées devra précéder tout usage futur des permissions Django standards.

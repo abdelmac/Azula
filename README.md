@@ -1,6 +1,8 @@
 # Azula
 
-Première tranche d’un ERP web : clients, catalogue sans stock, factures, règlements manuels et comptabilité de démonstration. Vue 3/TypeScript et Django REST Framework, avec **PostgreSQL uniquement**.
+ERP web en développement : fiches clients détaillées, tarifs personnalisés, catalogue sans stock, facturation avec remises, atelier d’impression, tableau de bord, exports et espace d’intégrations. Vue 3/TypeScript et Django REST Framework, avec **PostgreSQL uniquement**.
+
+Les API versionnées permettent à un site ou à une application externe de consulter le catalogue, créer des clients et des brouillons, ou transmettre des transactions. Le module bancaire importe les relevés CSV et rapproche les encaissements avec les factures sur confirmation. Les connexions directes aux prestataires et les transferts de fonds restent à configurer ou développer selon les services choisis. Voir [les fonctions et leurs limites](docs/evolution-erp.md).
 
 L’interface est disponible en français, anglais, arabe, allemand et turc. La langue de l’utilisateur, celle du document, la devise et les conventions régionales sont distinctes. Les traductions initiales nécessitent une relecture humaine.
 
@@ -35,7 +37,7 @@ Le profil [render.yaml](render.yaml) et [le guide de déploiement](docs/deployme
 
 ## Parcours de démonstration manuel
 
-Le catalogue comprend maintenant les classes d’articles, entrepôts, unités, prix d’achat et de vente, caractéristiques et photos par URL HTTPS. Consulter [le guide de la liste des prix](docs/catalogue.md) pour les paramètres, filtres et l’impression. Cette évolution nécessite la migration `0005_catalog_parameters` sur chaque installation ; les contrôles locaux et l’état de publication sont détaillés dans [verification.md](docs/verification.md).
+Le catalogue comprend les classes d’articles, entrepôts, unités, prix d’achat et de vente, code-barres, fabricant, fournisseur, caractéristiques et photos par URL HTTPS. Les fiches clients regroupent les coordonnées, conditions, tarifs et relevés. Consulter [la liste des prix](docs/catalogue.md), [les clients et tarifs](docs/clients-et-tarifs.md), et [l’édition et l’impression](docs/documents.md). Cette évolution utilise les migrations ERP `0005` à `0007` et celles de l’application `connections` ; les contrôles et l’état de publication sont détaillés dans [verification.md](docs/verification.md).
 
 1. Se connecter avec l’administrateur créé. Ajouter une période ouverte dans les paramètres.
 2. Créer un client, puis une facture avec une ligne : quantité `1`, prix hors taxe `100.00`, taxe de test `20`.
@@ -73,5 +75,8 @@ Les résultats réellement obtenus et leurs limites sont consignés dans [le rap
 - [Exploitation, HTTPS, sauvegarde et restauration](docs/operations.md)
 - [Protocole et mesures de performance](docs/performance.md)
 - [Suivi et feuille de route](docs/status.md)
+- [Évolution des fonctions ERP et limites](docs/evolution-erp.md)
+- [Clients, tarifs et articles détaillés](docs/clients-et-tarifs.md)
+- [Factures et atelier d’impression](docs/documents.md)
 
 Une installation sur un serveur du réseau local peut fonctionner sans Internet après installation des dépendances. Il faut rester connecté à ce serveur : aucune synchronisation ni utilisation autonome hors ligne n’est proposée.

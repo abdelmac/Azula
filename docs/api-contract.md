@@ -1,6 +1,11 @@
 # Contrat de travail API v1
 
-Toutes les routes sous `/api/`, slash final. Sessions Django + CSRF. Listes `{count,next,previous,results}` ; pagination `page`, `page_size` (50, max 100), `search`, `ordering`. Dates ISO. Montants chaînes décimales. Erreurs `{code, detail}` ; UI traduit `code`, ne montre jamais de message anglais interne.
+Toutes les routes sous `/api/`, slash final. Sessions Django + CSRF pour l’interface ; les routes externes `/api/external/v1/` utilisent exclusivement une clé Bearer limitée par droits, société et échéance. Listes `{count,next,previous,results}` ; pagination `page`, `page_size` (50, max 100), `search`, `ordering`. Dates ISO. Montants chaînes décimales. Erreurs `{code, detail}` ; UI traduit `code`, ne montre jamais de message anglais interne.
+
+Les extensions du 10 septembre sont documentées dans [clients et tarifs](clients-et-tarifs.md), [documents et impression](documents.md) et [connexions API et banque](connexions.md). Ces guides complètent les champs des contrats historiques ci-dessous.
+
+- GET `dashboard/?start=YYYY-MM-DD&end=YYYY-MM-DD` → `{currency,precision,metrics:{invoiced,received,outstanding,overdue},counts:{drafts,validated,customers,products},overdue_invoices,period}`. Facturation et règlements filtrés par date ; encours et retards toutes dates confondues. Lecture authentifiée, calculs cohérents sous verrou de société.
+- GET `export/?resource=customers|products|invoices|payments` → CSV UTF-8 avec BOM et séparateur `;`. Recherche `search`, dates `start/end` pour factures/règlements, `archived=true|false` pour clients/articles, `status=draft|validated` pour factures. Au plus 5 000 lignes ; erreur 400 `export_limit` au-delà. Les règlements sont réservés aux rôles admin/comptable. Les erreurs restent des réponses JSON, même avec `Accept: text/csv`. Les noms clients validés proviennent du snapshot ; la devise effective des brouillons est celle de la société. Cellules de texte pouvant déclencher une formule de tableur neutralisées.
 
 Rôles `admin`, `accountant`, `sales`, `viewer`. Langues `fr`, `en`, `ar`, `de`, `tr`.
 

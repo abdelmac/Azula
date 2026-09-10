@@ -1,4 +1,33 @@
-# Vérifications effectuées jusqu’au 8 septembre 2026
+# Vérifications effectuées jusqu’au 10 septembre 2026
+
+## Évolution ERP — 10 septembre 2026
+
+Périmètre : [clients et articles](clients-et-tarifs.md), [facturation et impression](documents.md), [API et banque](connexions.md), tableau de bord et exports. Les **177 nouveaux textes**, dans chacun des cinq catalogues, portent le total à **407 clés par langue**.
+
+| Contrôle exécuté | Résultat |
+| --- | --- |
+| Tests PostgreSQL ciblés CRM, documents, devise et indicateurs | **65 réussis en 66,37 s** sur `test_azula_erp` |
+| Suite backend complète | **307 réussis sur 308 en 346,21 s** ; le seul échec provenait du contournement de l’authentification par `force_authenticate` dans un test de frontière session/Bearer |
+| Reprise complète du fichier des connexions après correction du test et ajout de deux contrôles | **33 réussis en 68,77 s** ; le test utilise désormais une vraie session Django et vérifie son refus sur l’API Bearer |
+| Ruff backend complet | Réussi après les derniers changements |
+| `manage.py makemigrations --check --dry-run` | Aucun changement manquant ; aucune migration métier par ce contrôle |
+| `npm run check`, `npm run lint`, `npm run test` | Réussis ; **18 tests Vitest** |
+| `npm run build` et `docker compose build backend` | Réussis, y compris après correction des filtres bancaires et des noms accessibles des sélecteurs |
+| Playwright avec Chrome et l’image Docker finale | **24 réussis en 42,6 s, aucun ignoré** : 20 essais avec fixtures et 4 parcours PostgreSQL réels sur `azula_e2e` |
+
+Le backend comprend désormais **310 cas**. Les suites ci-dessus couvrent les remises exactes avant arrondi HALF_UP, les instantanés validés immuables, la duplication idempotente, les tarifs clients, la séparation des sociétés et des rôles, les champs supplémentaires bornés, les totaux et exports exacts, les clés API expirées/révoquées, les conflits de répétition, les imports CSV atomiques et les rapprochements concurrents. Les tests ne contactent aucune banque ni plateforme de paiement.
+
+Les tests utilisent exclusivement PostgreSQL 17.11 dans des bases isolées. Les migrations ERP `0006/0007` et `connections/0001/0002` ont été appliquées à `azula_e2e`, dont l’identité, la société et le seul compte synthétique sont vérifiés avant chaque exécution. Le contrôle de migration du catalogue utilise les modèles historiques et restaure toutes les feuilles du graphe, pour ne pas laisser les tests suivants sur un schéma ancien.
+
+La répétition de la procédure de publication a également réussi dans un conteneur PostgreSQL dédié : facture validée et règlement synthétiques conservés, empreintes des anciennes colonnes/lignes identiques, ACL/séquences/protections antérieures inchangées, ajout des seules tables et protections attendues. Les privilèges du rôle applicatif ont été vérifiés, y compris les mises à jour limitées aux colonnes de révocation et de rapprochement. Les cinq contrôles locaux du helper ont réussi. Cette répétition ne constitue pas une restauration d’une sauvegarde de production.
+
+Le rendu du brouillon arabe avec remise a été inspecté dans Chrome sur mobile : mentions, caractères mixtes, totaux et instructions lisibles, sans débordement de page. Les PDF sont générés par le navigateur ; aucune imprimante physique n’a été testée. Les limites restantes comprennent les connecteurs de prestataires réels, les impressions sur les matériels cibles, la relecture humaine des traductions, les essais de charge et la conformité fiscale du pays retenu.
+
+Les quatre parcours réels couvrent le catalogue, la fiche client et ses tarifs, la facturation avec règlements, ainsi que l’import et le rapprochement bancaire : une recette de `40.00` laisse un solde de `60.00` sur une facture de `100.00`. Le conteneur de recette sur 8081 a été supprimé ; la base synthétique a été conservée. L’instance locale 8080 n’a pas été modifiée.
+
+Sous Windows, les permissions des téléchargements Chrome créés dans le dépôt empêchaient leur lecture par Node (`EPERM`). Une fixture dédiée utilise le répertoire temporaire système, vérifie les octets du véritable CSV téléchargé puis nettoie son dossier après fermeture du navigateur. Le code d’export et la politique CSP de l’application sont inchangés.
+
+L’état de publication est complété après son exécution. Les comptes et bases Internet n’ont pas servi aux tests métier.
 
 ## Paramètres de catalogue — 8 septembre 2026
 
@@ -21,7 +50,7 @@ Le nouveau parcours navigateur réel crée une classe, un entrepôt, une unité,
 
 Les nouveaux essais d’interface vérifient les saisies après erreur et changement de langue, un prix au-delà de la précision entière de JavaScript, le rôle lecture seule, une photo HTTPS interceptée par une fixture, le raccourci F3 et l’impression. Les captures `catalogue-postgresql-desktop.png` et `catalogue-ar-mobile.png` dans `frontend/test-results/` ont été inspectées : thème bleu, listes et caractères mixtes lisibles, pas de débordement global sur mobile 390 × 844 ; la table large défile dans son propre conteneur. Un PDF de la liste avec fixtures a été généré par Chrome ; aucune imprimante réelle ni URL de photo externe réelle n’a été utilisée pour ces tests.
 
-La migration a été appliquée uniquement à `azula_e2e` et aux bases pytest. Le conteneur temporaire du port 8081 a été supprimé, la base synthétique conservée. **Cette évolution du catalogue n’est pas encore publiée sur Render** : l’instance Internet et l’instance locale du port 8080 conservent leur version précédente. La règle `AGENTS.md` « Aucune opération sur une base réelle » impose de clarifier l’autorisation avant la sauvegarde et la migration de la base Internet existante. Les résultats du déploiement du 7 septembre ci-dessous concernent cette version précédente.
+À l’issue des contrôles du 8 septembre, la migration avait été appliquée uniquement à `azula_e2e` et aux bases pytest. Le conteneur temporaire du port 8081 avait été supprimé, la base synthétique conservée. Le catalogue n’était pas encore publié et le port 8080 conservait sa version précédente. L’utilisateur a ensuite autorisé la sauvegarde, la migration et la publication Internet. Les résultats du déploiement du 7 septembre ci-dessous décrivent cette version historique.
 
 ## Version publiée le 7 septembre 2026
 

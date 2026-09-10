@@ -18,7 +18,7 @@ export default defineConfig({
   use: { baseURL, trace: 'retain-on-failure', screenshot: 'only-on-failure' },
   projects: [
     { name: 'ui-chromium', testMatch: ['ui.spec.ts', 'catalog-ui.spec.ts'], use: { ...devices['Desktop Chrome'], channel: process.env.PLAYWRIGHT_CHANNEL } },
-    { name: 'workflow-chromium', testMatch: ['workflow.spec.ts', 'catalog.spec.ts'], use: { ...devices['Desktop Chrome'], channel: process.env.PLAYWRIGHT_CHANNEL } },
+    { name: 'workflow-chromium', testMatch: ['workflow.spec.ts', 'catalog.spec.ts', 'documents.spec.ts', 'partners.spec.ts', 'connections.spec.ts', 'reporting.spec.ts'], use: { ...devices['Desktop Chrome'], channel: process.env.PLAYWRIGHT_CHANNEL } },
   ],
   webServer: {
     command: `"${python}" -m waitress --listen=127.0.0.1:8080 --threads=8 config.wsgi:application`,

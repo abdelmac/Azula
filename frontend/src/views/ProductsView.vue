@@ -5,11 +5,12 @@ import { errorCode, write } from '../api'
 import { canPrepare, session } from '../session'
 import { useList } from '../useList'
 import { money } from '../format'
-import type { Product } from '../types'
+import type { ProductDetails as Product } from '../partnerTypes'
 import Icon from '../components/Icon.vue'
 import ErrorNotice from '../components/ErrorNotice.vue'
 import Pagination from '../components/Pagination.vue'
 import CatalogPicker from '../components/CatalogPicker.vue'
+import CustomFieldsEditor from '../components/CustomFieldsEditor.vue'
 
 const { t } = useI18n()
 const category = ref<number[]>([]); const warehouse = ref<number[]>([]); const unit = ref<number[]>([])
@@ -23,18 +24,24 @@ const priceField = computed(() => priceType.value === 'purchase' ? 'purchase_pri
 const filters = computed(() => ({ category: String(category.value[0] ?? ''), warehouse: String(warehouse.value[0] ?? ''), unit: String(unit.value[0] ?? ''), archived: archived.value, specifications: delayedSpecifications.value, ordering: ordering.value.replace('price', priceField.value) }))
 const { items, count, page, search, loading, error, reload } = useList<Product>(() => 'products/', filters)
 const editing = ref<number | 'new' | null>(null); const busy = ref(false); const formError = ref(''); const success = ref(false); const printing = ref(false)
-const defaults = () => ({ name: '', reference: '', unit_price: '0.00', purchase_price: '', tax_rate: '0.00', category: [] as number[], unit: [] as number[], warehouses: [] as number[], specifications: '', image_url: '' })
+const defaults = () => ({ name: '', reference: '', unit_price: '0.00', purchase_price: '', tax_rate: '0.00', category: [] as number[], unit: [] as number[], warehouses: [] as number[], specifications: '', image_url: '', latin_name: '', barcode: '', manufacturer: '', supplier_name: '', color: '', dimensions: '', origin: '', weight: '', notes: '' })
 const form = reactive(defaults())
+const customRows = ref<{ key: string; value: string }[]>([])
+const extraFields = ['latin_name', 'barcode', 'manufacturer', 'supplier_name', 'color', 'dimensions', 'origin'] as const
+const extraLabels: Record<string, string> = { latin_name: 'partnerLatinName', barcode: 'partnerBarcode', manufacturer: 'partnerManufacturer', supplier_name: 'partnerSupplier', color: 'partnerColor', dimensions: 'partnerDimensions', origin: 'partnerOrigin' }
+const extraLengths: Record<string, number> = { latin_name: 200, barcode: 80, manufacturer: 150, supplier_name: 150, color: 80, dimensions: 150, origin: 100 }
 const brokenImages = ref<Set<string>>(new Set())
 function start(item?: Product) {
   editing.value = item?.id ?? 'new'; formError.value = ''; success.value = false
-  Object.assign(form, defaults(), item ? { name: item.name, reference: item.reference, unit_price: item.unit_price, purchase_price: item.purchase_price ?? '', tax_rate: item.tax_rate, category: item.category ? [item.category] : [], unit: item.unit ? [item.unit] : [], warehouses: [...(item.warehouses ?? [])], specifications: item.specifications ?? '', image_url: item.image_url ?? '' } : {})
+  Object.assign(form, defaults(), item ? { name: item.name, reference: item.reference, unit_price: item.unit_price, purchase_price: item.purchase_price ?? '', tax_rate: item.tax_rate, category: item.category ? [item.category] : [], unit: item.unit ? [item.unit] : [], warehouses: [...(item.warehouses ?? [])], specifications: item.specifications ?? '', image_url: item.image_url ?? '', latin_name: item.latin_name ?? '', barcode: item.barcode ?? '', manufacturer: item.manufacturer ?? '', supplier_name: item.supplier_name ?? '', color: item.color ?? '', dimensions: item.dimensions ?? '', origin: item.origin ?? '', weight: item.weight ?? '', notes: item.notes ?? '' } : {})
+  customRows.value = Object.entries(item?.custom_fields ?? {}).map(([key, value]) => ({ key, value }))
 }
 async function save() {
   if (busy.value || editing.value === null) return
+  if (new Set(customRows.value.map(row => row.key.trim())).size !== customRows.value.length) { formError.value = 'invalid_input'; return }
   busy.value = true; formError.value = ''; success.value = false
   try {
-    await write(`products/${editing.value === 'new' ? '' : `${editing.value}/`}`, { ...form, category: form.category[0] ?? null, unit: form.unit[0] ?? null, purchase_price: form.purchase_price.trim() || null }, editing.value === 'new' ? 'POST' : 'PATCH')
+    await write(`products/${editing.value === 'new' ? '' : `${editing.value}/`}`, { ...form, category: form.category[0] ?? null, unit: form.unit[0] ?? null, purchase_price: form.purchase_price.trim() || null, weight: form.weight.trim() || null, custom_fields: Object.fromEntries(customRows.value.map(row => [row.key.trim(), row.value])) }, editing.value === 'new' ? 'POST' : 'PATCH')
     editing.value = null; success.value = true; await reload()
   } catch (cause) { formError.value = errorCode(cause) } finally { busy.value = false }
 }
@@ -88,6 +95,7 @@ onBeforeUnmount(() => { clearTimeout(specificationTimer); window.removeEventList
         <label class="field"><span>{{ t('currency') }}</span><input :value="session.company?.currency" readonly dir="ltr" /></label>
         <label class="field full"><span>{{ t('specifications') }}</span><textarea v-model="form.specifications" name="specifications" rows="3" maxlength="4000" /></label>
         <label class="field full"><span>{{ t('imageUrl') }}</span><input v-model="form.image_url" name="image_url" type="url" pattern="https://.*" maxlength="1000" dir="ltr" /><small>{{ t('imageUrlHelp') }}</small></label>
+        <details class="full product-extra"><summary>{{ t('partnerProductDetails') }}</summary><div class="form-grid"><label v-for="field in extraFields" :key="field" class="field"><span>{{ t(extraLabels[field]!) }}</span><input v-model="form[field]" :name="field" :maxlength="extraLengths[field]" /></label><label class="field"><span>{{ t('partnerWeight') }}</span><input v-model="form.weight" name="weight" inputmode="decimal" pattern="[0-9]+([.][0-9]+)?" dir="ltr" /></label><label class="field full"><span>{{ t('partnerNotes') }}</span><textarea v-model="form.notes" name="notes" rows="4" maxlength="4000" /></label></div><CustomFieldsEditor v-model="customRows" /></details>
       </div></fieldset><div class="form-actions"><button type="button" class="button subtle" :disabled="busy" @click="editing = null">{{ t('cancel') }}</button><button class="button primary" type="submit" :disabled="busy">{{ t(busy ? 'saving' : 'save') }}</button></div></form>
     </section>
     <section class="card section-card no-print" data-testid="catalog-filters"><fieldset :disabled="printing"><div class="catalog-filter-grid">
@@ -111,6 +119,7 @@ onBeforeUnmount(() => { clearTimeout(specificationTimer); window.removeEventList
 </template>
 <style scoped>
 .product-heading-actions { display: flex; flex-wrap: wrap; gap: 10px; flex-shrink: 0; }
+.product-extra summary { cursor: pointer; color: var(--primary); font-weight: 650; padding-block: 12px; }.product-extra[open] summary { margin-block-end: 10px; }
 .catalog-filter-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
 .catalog-specification-filter { grid-column: 1 / -1; }
 .catalog-filter-footer { display: flex; justify-content: space-between; align-items: center; gap: 14px; margin-block-start: 18px; }

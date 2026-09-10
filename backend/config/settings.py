@@ -30,7 +30,7 @@ ALLOW_DEMO_DATA = os.environ.get("ALLOW_DEMO_DATA", "0") == "1" and ENVIRONMENT 
 INSTALLED_APPS = [
     "django.contrib.admin", "django.contrib.auth", "django.contrib.contenttypes",
     "django.contrib.sessions", "django.contrib.messages", "django.contrib.staticfiles",
-    "rest_framework", "erp",
+    "rest_framework", "erp", "connections",
 ]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

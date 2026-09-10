@@ -1,4 +1,28 @@
 .print-view { min-block-size: 100vh; background: #edf3fc; padding: 25px 24px 50px; }
+.print-studio { display: grid; grid-template-columns: minmax(290px, .8fr) minmax(0, 1.4fr); gap: 24px; align-items: start; }
+.print-studio-preview { min-inline-size: 0; overflow: auto; }
+.print-studio-preview .invoice-paper { padding: 30px; min-block-size: 700px; }
+.document-logo { max-inline-size: 200px; max-block-size: 90px; object-fit: contain; margin-block-end: 24px; }
+.print-draft-banner { border: 2px solid #7c5805; color: #654700; padding: 12px; margin-block-end: 24px; font-weight: 700; text-align: center; }
+.document-code { display: block; color: #526b8a; margin-block-start: 4px; }
+.document-note { margin-block: 20px; overflow-wrap: anywhere; }
+.document-note h2 { font-size: 12px; color: #526b8a; }
+.document-note p { font-size: 12px; }
+.invoice-paper .print-header { border-block-end-color: var(--document-accent, #075ad6); border-block-end-width: 3px; }
+.invoice-paper .print-header h1 { color: var(--document-accent, #075ad6); }
+.invoice-paper .print-table th { inline-size: auto; }
+.invoice-paper .print-table th:first-child { inline-size: 30%; }
+.invoice-paper .print-table th:last-child { inline-size: 18%; }
+.invoice-paper.print-compact { min-block-size: 0; }
+.print-compact .print-brand { margin-block-end: 15px; }
+.print-compact .print-header, .print-compact .print-parties { padding-block: 15px; }
+.print-compact .print-table th, .print-compact .print-table td { padding-block: 8px; }
+.print-compact .print-totals { margin-block: 20px; }
+.invoice-extra-fields { margin-block-start: 24px; }
+.line-actions { display: flex; flex-wrap: wrap; gap: 3px; min-inline-size: 100px; }
+.invoice-date-filters { padding: 0 22px 20px; gap: 16px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 1150px) { .print-studio { grid-template-columns: 1fr; } }
+@media (max-width: 760px) { .invoice-date-filters { grid-template-columns: 1fr 1fr; } }
 .print-toolbar { max-inline-size: 850px; margin: 0 auto 22px; display: flex; align-items: center; justify-content: space-between; gap: 15px; }
 .invoice-paper { max-inline-size: 850px; min-block-size: 1000px; margin-inline: auto; background: white; padding: 50px 55px; border: 1px solid #dce5f1; color: #091b3a; box-shadow: 0 5px 30px #091b3a14; }
 .print-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 25px; border-block-end: 1px solid #d7e3f3; padding-block-end: 32px; }

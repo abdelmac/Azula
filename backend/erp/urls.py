@@ -2,9 +2,11 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from . import api
+from .partner_api import CustomerPriceViewSet
 
 router = DefaultRouter()
 router.register("customers", api.CustomerViewSet, basename="customer")
+router.register("customer-prices", CustomerPriceViewSet, basename="customer-price")
 router.register("products", api.ProductViewSet, basename="product")
 router.register("product-categories", api.ProductCategoryViewSet, basename="product-category")
 router.register("warehouses", api.WarehouseViewSet, basename="warehouse")

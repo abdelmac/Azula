@@ -1,13 +1,13 @@
 import hashlib
 import logging
-from datetime import timedelta
+from datetime import date, timedelta
 from decimal import Decimal
 
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError, transaction
-from django.db.models import DecimalField, Sum, Value
+from django.db.models import DecimalField, F, Sum, Value
 from django.db.models.fields.json import KeyTextTransform, KeyTransform
 from django.db.models.functions import Coalesce
 from django.http import JsonResponse
@@ -48,6 +48,7 @@ from .serializers import (
     CompanySerializer,
     CustomerSerializer,
     DraftSerializer,
+    DuplicateInvoiceSerializer,
     EntrySerializer,
     InvoiceSerializer,
     JournalSerializer,
@@ -66,6 +67,8 @@ from .serializers import (
 from .services import (
     DomainError,
     configure_company,
+    duplicate_invoice,
+    preview_invoice,
     record_payment,
     save_draft,
     set_period,
@@ -296,14 +299,52 @@ class ReferenceViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.
 class CustomerViewSet(ReferenceViewSet):
     queryset = Customer.objects.all()
     serializer_class = CustomerSerializer
-    search_fields = ["name", "email", "tax_id"]
+    search_fields = ["name", "email", "tax_id", "reference", "legal_name", "latin_name", "contact_name", "phone", "mobile", "city", "group_name"]
+    ordering_fields = ["id", "name", "reference", "city", "archived"]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        for field in ("group_name", "city", "region"):
+            value = self.request.query_params.get(field)
+            if value is not None:
+                if len(value) > 100:
+                    raise exceptions.ValidationError("invalid_input")
+                queryset = queryset.filter(**{field + "__icontains": value})
+        return queryset
+
+    def _save(self, serializer):
+        with transaction.atomic():
+            Company.objects.select_for_update().get(pk=self.request.user.company_id)
+            reference = serializer.validated_data.get("reference")
+            if reference:
+                duplicate = Customer.objects.filter(company=self.request.user.company, reference=reference)
+                if serializer.instance:
+                    duplicate = duplicate.exclude(pk=serializer.instance.pk)
+                if duplicate.exists():
+                    raise exceptions.ValidationError("invalid_input")
+            super()._save(serializer)
+
+    perform_create = _save
+    perform_update = _save
+
+    @action(detail=True, methods=["get"])
+    def statement(self, request, pk=None):
+        from .partner_api import customer_statement
+
+        return customer_statement(request, self.get_object(), self)
 
 
 class ProductViewSet(ReferenceViewSet):
     queryset = Product.objects.select_related("category", "unit").prefetch_related("warehouses")
     serializer_class = ProductSerializer
-    search_fields = ["name", "reference", "specifications", "category__name", "category__code"]
+    search_fields = ["name", "reference", "specifications", "category__name", "category__code", "barcode", "latin_name", "manufacturer", "supplier_name"]
     ordering_fields = ["id", "name", "reference", "unit_price", "purchase_price", "archived"]
+
+    @action(detail=True, methods=["get"])
+    def pricing(self, request, pk=None):
+        from .partner_api import product_pricing
+
+        return product_pricing(request, self.get_object())
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -349,8 +390,8 @@ class InvoiceViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, CompanyVi
     queryset = Invoice.objects.all()
     serializer_class = InvoiceSerializer
     http_method_names = ["get", "post", "patch", "head", "options"]
-    action_roles = {"create": MANAGE_ROLES, "partial_update": MANAGE_ROLES, "validate": FINANCE_ROLES, "payments": FINANCE_ROLES}
-    search_fields = ["number", "customer__name", "snapshot__customer__name"]
+    action_roles = {"create": MANAGE_ROLES, "partial_update": MANAGE_ROLES, "validate": FINANCE_ROLES, "payments": FINANCE_ROLES, "duplicate": MANAGE_ROLES}
+    search_fields = ["number", "customer__name", "snapshot__customer__name", "customer_reference", "document_title"]
     ordering_fields = ["id", "number", "issue_date", "due_date", "total", "status"]
     ordering = ["-issue_date", "-id"]
 
@@ -362,10 +403,30 @@ class InvoiceViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, CompanyVi
                 raise exceptions.ValidationError("invalid_input")
             queryset = queryset.filter(status=status)
         queryset = self._related_filter(queryset, "customer", Customer)
+        bounds = {}
+        for parameter, lookup in (("date_from", "issue_date__gte"), ("date_to", "issue_date__lte")):
+            value = self.request.query_params.get(parameter)
+            if value is not None:
+                try:
+                    bounds[parameter] = date.fromisoformat(value)
+                except (TypeError, ValueError):
+                    raise exceptions.ValidationError("invalid_input") from None
+                queryset = queryset.filter(**{lookup: bounds[parameter]})
+        if bounds.get("date_from") and bounds.get("date_to") and bounds["date_from"] > bounds["date_to"]:
+            raise exceptions.ValidationError("invalid_input")
+        payment_status = self.request.query_params.get("payment_status")
+        if payment_status is not None and payment_status not in {"unpaid", "overdue", "settled"}:
+            raise exceptions.ValidationError("invalid_input")
+        if payment_status or self.action == "list":
+            queryset = queryset.annotate(paid_amount=Coalesce(Sum("payments__amount"), Value(Decimal("0")), output_field=DecimalField(max_digits=22, decimal_places=6)))
+        if payment_status:
+            queryset = queryset.filter(status="validated")
+            queryset = queryset.filter(total=F("paid_amount")) if payment_status == "settled" else queryset.filter(total__gt=F("paid_amount"))
+            if payment_status == "overdue":
+                queryset = queryset.filter(due_date__lt=timezone.localdate())
         if self.action == "list":
             return queryset.defer("snapshot").annotate(
                 frozen_customer_name=KeyTextTransform("name", KeyTransform("customer", "snapshot")),
-                paid_amount=Coalesce(Sum("payments__amount"), Value(Decimal("0")), output_field=DecimalField(max_digits=22, decimal_places=6)),
             )
         return queryset.prefetch_related("lines", "payments")
 
@@ -400,6 +461,20 @@ class InvoiceViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, CompanyVi
         serializer = PaymentInputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         return self._response(record_payment(request.user.company, request.user, obj.pk, request.headers.get("Idempotency-Key"), serializer.validated_data))
+
+    @action(detail=True, methods=["get"])
+    def preview(self, request, pk=None):
+        obj = self.get_object()
+        response = Response(preview_invoice(request.user.company, request.user, obj.pk))
+        response["Cache-Control"] = "no-store"
+        return response
+
+    @action(detail=True, methods=["post"])
+    def duplicate(self, request, pk=None):
+        obj = self.get_object()
+        serializer = DuplicateInvoiceSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return self._response(duplicate_invoice(request.user.company, request.user, obj.pk, request.headers.get("Idempotency-Key"), serializer.validated_data), status=201)
 
 
 class ReadOnlyCompanyViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, CompanyViewSet):

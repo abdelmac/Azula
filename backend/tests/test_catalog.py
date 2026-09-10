@@ -13,7 +13,6 @@ from erp.models import (
     AuditEvent,
     Company,
     Customer,
-    Invoice,
     Period,
     Product,
     ProductCategory,
@@ -225,6 +224,7 @@ def test_catalog_migration_preserves_existing_product_and_invoice():
     old = [("erp", "0004_alter_company_locale")]
     new = [("erp", "0005_catalog_parameters")]
     executor = MigrationExecutor(connection)
+    latest = executor.loader.graph.leaf_nodes()
     executor.migrate(old)
     try:
         apps = executor.loader.project_state(old).apps
@@ -236,11 +236,12 @@ def test_catalog_migration_preserves_existing_product_and_invoice():
         before = invoice_model.objects.values().get(pk=invoice.pk)
         executor = MigrationExecutor(connection)
         executor.migrate(new)
-        current = Product.objects.get(pk=product.pk)
+        current_apps = executor.loader.project_state(new).apps
+        current = current_apps.get_model("erp", "Product").objects.get(pk=product.pk)
         assert current.reference == "EXISTING" and current.unit_price == Decimal("3.141592")
         assert current.category_id is current.unit_id is current.purchase_price is None
         assert current.specifications == current.image_url == ""
         assert not current.warehouses.exists()
-        assert Invoice.objects.values().get(pk=invoice.pk) == before
+        assert current_apps.get_model("erp", "Invoice").objects.values().get(pk=invoice.pk) == before
     finally:
-        MigrationExecutor(connection).migrate(new)
+        MigrationExecutor(connection).migrate(latest)

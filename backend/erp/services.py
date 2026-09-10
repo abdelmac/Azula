@@ -7,6 +7,7 @@ financières d'une société sont sérialisées, y compris les fermetures de pé
 import hashlib
 import json
 import re
+from copy import deepcopy
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation, localcontext
 
@@ -14,6 +15,7 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
+from .document_settings import validate_print_settings
 from .models import (
     LANGUAGES,
     Account,
@@ -149,11 +151,12 @@ def _calculate(company, lines):
             quantity = _decimal(item.get("quantity"), maximum=MAX_QUANTITY, positive=True)
             unit_price = _decimal(item.get("unit_price"))
             tax_rate = _decimal(item.get("tax_rate"), places=4, maximum=Decimal("100"))
-            net = (quantity * unit_price).quantize(quantum, rounding=ROUND_HALF_UP)
+            discount_rate = _decimal(item.get("discount_rate", "0"), places=4, maximum=Decimal("100"))
+            net = (quantity * unit_price * (Decimal("1") - discount_rate / Decimal("100"))).quantize(quantum, rounding=ROUND_HALF_UP)
             tax = (net * tax_rate / Decimal("100")).quantize(quantum, rounding=ROUND_HALF_UP)
             if net + tax > MAX_AMOUNT:
                 raise DomainError("invalid_amount")
-            results.append(dict(position=position, product=product, description=description.strip(), quantity=quantity, unit_price=unit_price, tax_rate=tax_rate, net=net, tax=tax, total=net + tax))
+            results.append(dict(position=position, product=product, description=description.strip(), quantity=quantity, unit_price=unit_price, tax_rate=tax_rate, discount_rate=discount_rate, net=net, tax=tax, total=net + tax))
     total = sum((line["total"] for line in results), Decimal("0"))
     if total > MAX_AMOUNT:
         raise DomainError("invalid_amount")
@@ -163,7 +166,8 @@ def _calculate(company, lines):
 @transaction.atomic
 def save_draft(company, actor, data, invoice_id=None):
     _authorize(company, actor, {"admin", "accountant", "sales"})
-    if not isinstance(data, dict) or set(data) - {"customer", "issue_date", "due_date", "document_language", "lines"}:
+    text_fields = {"customer_reference": 200, "document_title": 150, "notes": 4000, "payment_terms": 2000, "shipping_address": 2000}
+    if not isinstance(data, dict) or set(data) - {"customer", "issue_date", "due_date", "document_language", "lines", *text_fields}:
         raise DomainError("invalid_input")
     company = _lock(company)
     invoice = _invoice(company, invoice_id) if invoice_id else Invoice(company=company)
@@ -177,9 +181,14 @@ def save_draft(company, actor, data, invoice_id=None):
     invoice.document_language = data.get("document_language", invoice.document_language if invoice.pk else company.document_language)
     if invoice.document_language not in dict(LANGUAGES):
         raise DomainError("invalid_input")
+    for name, maximum in text_fields.items():
+        value = data.get(name, getattr(invoice, name))
+        if not isinstance(value, str) or len(value) > maximum:
+            raise DomainError("invalid_input")
+        setattr(invoice, name, value)
     source_lines = data.get("lines")
     if source_lines is None and invoice.pk:
-        source_lines = list(invoice.lines.values("product", "description", "quantity", "unit_price", "tax_rate"))
+        source_lines = list(invoice.lines.values("product", "description", "quantity", "unit_price", "tax_rate", "discount_rate"))
     lines = _calculate(company, source_lines)
     invoice.net = sum((line["net"] for line in lines), Decimal("0"))
     invoice.tax = sum((line["tax"] for line in lines), Decimal("0"))
@@ -207,9 +216,10 @@ def _entry(company, invoice, posting_date, kind, values, payment=None):
     return entry
 
 
-def _snapshot(invoice):
+def _snapshot(invoice, lines=None):
     company, customer = invoice.company, invoice.customer
-    precision = invoice.precision
+    precision = invoice.precision if invoice.precision is not None else company.precision
+    source_lines = lines if lines is not None else invoice.lines.select_related("product").all()
 
     def money(value):
         return format(value, f".{precision}f")
@@ -218,11 +228,52 @@ def _snapshot(invoice):
         "company": {"name": company.name, "address": company.address, "email": company.email, "currency": company.currency},
         "customer": {"name": customer.name, "address": customer.address, "email": customer.email, "tax_id": customer.tax_id},
         "number": invoice.number, "issue_date": invoice.issue_date.isoformat(), "due_date": invoice.due_date.isoformat(),
-        "document_language": invoice.document_language, "currency": invoice.currency, "precision": precision, "locale": company.locale,
+        "document_language": invoice.document_language, "currency": invoice.currency or company.currency, "precision": precision, "locale": company.locale,
+        "status": invoice.status,
+        "customer_reference": invoice.customer_reference, "document_title": invoice.document_title,
+        "notes": invoice.notes, "payment_terms": invoice.payment_terms, "shipping_address": invoice.shipping_address,
+        "print_settings": deepcopy(company.print_settings),
         "rounding": {"mode": "ROUND_HALF_UP", "scope": "line", "tax_base": "rounded_net"},
-        "lines": [{"description": line.description, "product_reference": line.product.reference if line.product else "", "quantity": format(line.quantity, "f"), "unit_price": format(line.unit_price, "f"), "tax_rate": format(line.tax_rate, "f"), "net": money(line.net), "tax": money(line.tax), "total": money(line.total)} for line in invoice.lines.select_related("product").all()],
+        "lines": [{"description": line.description, "product_reference": line.product.reference if line.product else "", "quantity": format(line.quantity, "f"), "unit_price": format(line.unit_price, "f"), "tax_rate": format(line.tax_rate, "f"), "discount_rate": format(line.discount_rate, "f"), "net": money(line.net), "tax": money(line.tax), "total": money(line.total)} for line in source_lines],
         "net": money(invoice.net), "tax": money(invoice.tax), "total": money(invoice.total), "demo": True,
     }
+
+
+@transaction.atomic
+def preview_invoice(company, actor, invoice_id):
+    """Recalcul transitoire, sans modifier le brouillon ni les instantanés validés."""
+    _authorize(company, actor, {"admin", "accountant", "sales", "viewer"})
+    company = _lock(company)
+    invoice = _invoice(company, invoice_id)
+    if invoice.status == "validated":
+        return invoice.snapshot
+    source = list(invoice.lines.values("product", "description", "quantity", "unit_price", "tax_rate", "discount_rate"))
+    calculated = _calculate(company, source)
+    lines = [InvoiceLine(company=company, invoice=invoice, **line) for line in calculated]
+    invoice.net = sum((line.net for line in lines), Decimal("0"))
+    invoice.tax = sum((line.tax for line in lines), Decimal("0"))
+    invoice.total = invoice.net + invoice.tax
+    return _snapshot(invoice, lines=lines)
+
+
+@transaction.atomic
+def duplicate_invoice(company, actor, invoice_id, key, data):
+    _authorize(company, actor, {"admin", "accountant", "sales"})
+    if not isinstance(data, dict) or set(data) != {"issue_date", "due_date"}:
+        raise DomainError("invalid_input")
+    company = _lock(company)
+    original = _invoice(company, invoice_id)
+    dates = {name: _date(value) for name, value in data.items()}
+    previous, fingerprint = _retry(company, invoice_id, key, "duplicate", dates)
+    if previous:
+        return _invoice(company, previous.invoice_id)
+    data = {**dates, "customer": original.customer_id, "document_language": original.document_language}
+    data.update({name: getattr(original, name) for name in ("customer_reference", "document_title", "notes", "payment_terms", "shipping_address")})
+    data["lines"] = list(original.lines.values("product", "description", "quantity", "unit_price", "tax_rate", "discount_rate"))
+    invoice = save_draft(company, actor, data)
+    _audit(company, actor, "invoice.duplicated", invoice, {"source_invoice": original.pk})
+    _remember(company, invoice, key, "duplicate", fingerprint)
+    return invoice
 
 
 @transaction.atomic
@@ -296,16 +347,23 @@ def record_payment(company, actor, invoice_id, key, data):
 def configure_company(company, actor, data):
     _authorize(company, actor, {"admin"})
     company = _lock(company)
-    allowed = {"name", "address", "email", "currency", "precision", "document_language", "locale"}
+    allowed = {"name", "address", "email", "currency", "precision", "document_language", "locale", "print_settings"}
     if set(data) - allowed:
         raise DomainError("invalid_input")
-    if any(field in data and data[field] != getattr(company, field) for field in ("currency", "precision")) and Invoice.objects.filter(company=company, status="validated").exists():
-        raise DomainError("configuration_locked")
+    if any(field in data and data[field] != getattr(company, field) for field in ("currency", "precision")):
+        # Import tardif : les connexions reposent elles-mêmes sur les services ERP.
+        from connections.models import BankAccount, ExternalTransaction
+
+        if (Invoice.objects.filter(company=company, status="validated").exists()
+                or BankAccount.objects.filter(company=company).exists()
+                or ExternalTransaction.objects.filter(company=company).exists()):
+            raise DomainError("configuration_locked")
     for field, value in data.items():
         setattr(company, field, value)
     if not re.fullmatch(r"[A-Z]{3}", company.currency) or isinstance(company.precision, bool) or company.precision not in range(5):
         raise DomainError("invalid_input")
     try:
+        validate_print_settings(company.print_settings)
         company.full_clean()
     except ValidationError:
         raise DomainError("invalid_input") from None

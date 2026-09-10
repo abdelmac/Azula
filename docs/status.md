@@ -1,5 +1,9 @@
 # État de la première tranche
 
+## Évolution ERP — 10 septembre 2026
+
+Les fiches clients et articles détaillées, tarifs clients, relevés, remises par ligne, duplication de brouillons, atelier d’impression, API externes à clés révocables, import et rapprochement bancaire, tableau de bord et exports CSV sont implémentés. Le [guide de cette évolution](evolution-erp.md) décrit les écrans et leurs limites. La publication et les contrôles de cette version sont suivis dans [verification.md](verification.md). Les sections historiques ci-dessous conservent les résultats des versions précédentes.
+
 ## Évolution du catalogue — 8 septembre 2026
 
 La [liste des prix](catalogue.md) et ses paramètres sont implémentés : classes, entrepôts, unités, prix d’achat, caractéristiques, photos HTTPS, filtres et impression. **212 tests backend, 18 tests Vitest et 9 tests Chrome réussis**, avec migration vérifiée sur PostgreSQL de test. Cette évolution reste à publier : aucune migration n’a été appliquée à la base Internet existante. Les résultats ci-dessous décrivent aussi la version précédemment déployée.
@@ -44,7 +48,7 @@ Restent également la relecture humaine des cinq langues, l’impression arabe s
 - Choix du pays et analyse des obligations fiscales ; aucun régime fiscal déduit de la langue.
 - Avoirs/remboursements puis corrections comptables contrôlées. En attendant, annulation/modification des documents validés refusée.
 - Achats, fournisseurs, stock, paie, fabrication.
-- Rapprochement bancaire, connexions bancaires et paiements réels.
+- Connexions bancaires directes et paiements réels ; l’import CSV et le rapprochement manuel sont disponibles dans l’évolution du 10 septembre.
 - Devises multiples/conversion et facturation électronique réglementaire.
 - Synchronisation hors ligne, applications natives et éventuelle offre SaaS.
 - Après mesures : pagination par curseur si nécessaire, index de recherche spécialisés et verrouillage plus fin des écritures.

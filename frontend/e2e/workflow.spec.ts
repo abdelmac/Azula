@@ -14,7 +14,7 @@ test('parcours réel PostgreSQL : client → facture 120 → règlements 50/70 �
   await page.locator('input[name="name"]').fill(uniqueName)
   await page.locator('input[name="email"]').fill('demo@example.invalid')
   await page.getByRole('button', { name: fr.save, exact: true }).click()
-  await expect(page.getByText(uniqueName, { exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: uniqueName, exact: true, level: 1 })).toBeVisible()
   await page.goto('/invoices/new')
   await page.locator('.search-select input').first().fill(uniqueName)
   await page.getByRole('button', { name: uniqueName, exact: true }).click()

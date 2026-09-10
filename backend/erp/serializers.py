@@ -5,6 +5,7 @@ from urllib.parse import urlsplit
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
+from .document_settings import validate_print_settings
 from .models import (
     Account,
     AuditEvent,
@@ -60,8 +61,11 @@ class CompanySerializer(StrictInputMixin, serializers.ModelSerializer):
 
     class Meta:
         model = Company
-        fields = ("id", "name", "address", "email", "currency", "precision", "document_language", "locale")
+        fields = ("id", "name", "address", "email", "currency", "precision", "document_language", "locale", "print_settings")
         read_only_fields = ("id",)
+
+    def validate_print_settings(self, value):
+        return validate_print_settings(value)
 
 
 class UserSerializer(StrictInputMixin, serializers.ModelSerializer):
@@ -98,11 +102,57 @@ class LoginSerializer(StrictInputMixin, serializers.Serializer):
     password = serializers.CharField(max_length=256, trim_whitespace=False)
 
 
+def validate_custom_fields(value):
+    if not isinstance(value, dict) or len(value) > 20:
+        raise serializers.ValidationError("invalid_input")
+    for key, content in value.items():
+        if not isinstance(key, str) or not key.strip() or len(key) > 60 or not isinstance(content, str) or len(content) > 500:
+            raise serializers.ValidationError("invalid_input")
+        if any(char in key + content for char in "<>"):
+            raise serializers.ValidationError("invalid_input")
+    return value
+
+
 class CustomerSerializer(StrictInputMixin, serializers.ModelSerializer):
+    default_discount_rate = ExactDecimalField(max_digits=7, decimal_places=4, min_value=Decimal("0"), max_value=Decimal("100"), required=False)
+    credit_limit = ExactDecimalField(max_digits=22, decimal_places=6, min_value=Decimal("0"), allow_null=True, required=False)
+    country = serializers.RegexField(r"^[A-Z]{2}$", allow_blank=True, required=False)
+    payment_terms_days = serializers.IntegerField(min_value=0, max_value=365, required=False)
+    custom_fields = serializers.JSONField(required=False, validators=[validate_custom_fields])
+
     class Meta:
         model = Customer
-        fields = ("id", "name", "email", "address", "tax_id", "archived")
+        fields = (
+            "id", "name", "email", "address", "tax_id", "archived", "reference", "legal_name", "latin_name",
+            "contact_name", "phone", "phone_alt", "mobile", "fax", "website", "postal_code", "city", "region", "country",
+            "shipping_address", "group_name", "payment_terms_days", "default_discount_rate", "credit_limit", "bank_name", "iban", "bic", "notes", "custom_fields",
+        )
         read_only_fields = ("id",)
+        validators = []
+        extra_kwargs = {"address": {"max_length": 2000}}
+
+    def validate_iban(self, value):
+        value = value.replace(" ", "").upper()
+        if value:
+            if not re.fullmatch(r"[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}", value):
+                raise serializers.ValidationError("invalid_input")
+            digits = "".join(str(ord(char) - 55) if char.isalpha() else char for char in value[4:] + value[:4])
+            if int(digits) % 97 != 1:
+                raise serializers.ValidationError("invalid_input")
+        return value
+
+    def validate_bic(self, value):
+        value = value.replace(" ", "").upper()
+        if value and not re.fullmatch(r"[A-Z]{6}[A-Z0-9]{2}(?:[A-Z0-9]{3})?", value):
+            raise serializers.ValidationError("invalid_input")
+        return value
+
+    def validate_website(self, value):
+        if value:
+            url = urlsplit(value)
+            if url.scheme not in {"https", "http"} or url.username is not None or url.password is not None:
+                raise serializers.ValidationError("invalid_input")
+        return value
 
 
 class CatalogReferenceSerializer(StrictInputMixin, serializers.ModelSerializer):
@@ -128,6 +178,8 @@ class UnitSerializer(CatalogReferenceSerializer):
 
 
 class ProductSerializer(StrictInputMixin, serializers.ModelSerializer):
+    weight = ExactDecimalField(max_digits=16, decimal_places=6, min_value=Decimal("0"), allow_null=True, required=False)
+    custom_fields = serializers.JSONField(required=False, validators=[validate_custom_fields])
     unit_price = ExactDecimalField(max_digits=22, decimal_places=6, min_value=Decimal("0"))
     purchase_price = ExactDecimalField(max_digits=22, decimal_places=6, min_value=Decimal("0"), allow_null=True, required=False)
     tax_rate = ExactDecimalField(max_digits=7, decimal_places=4, min_value=Decimal("0"), max_value=Decimal("100"))
@@ -142,6 +194,7 @@ class ProductSerializer(StrictInputMixin, serializers.ModelSerializer):
         fields = (
             "id", "reference", "name", "unit_price", "purchase_price", "tax_rate", "archived",
             "category", "category_name", "unit", "unit_name", "warehouses", "specifications", "image_url",
+            "latin_name", "barcode", "manufacturer", "supplier_name", "color", "dimensions", "origin", "weight", "notes", "custom_fields",
         )
         read_only_fields = ("id",)
         validators = []  # L'unicité est évaluée explicitement dans la société.
@@ -186,6 +239,7 @@ class ProductSerializer(StrictInputMixin, serializers.ModelSerializer):
 
 
 class DraftLineSerializer(StrictInputMixin, serializers.Serializer):
+    discount_rate = ExactDecimalField(max_digits=7, decimal_places=4, min_value=Decimal("0"), max_value=Decimal("100"), required=False, default=Decimal("0"))
     product = serializers.IntegerField(min_value=1, allow_null=True, required=False, default=None)
     description = serializers.CharField(max_length=500)
     quantity = ExactDecimalField(max_digits=16, decimal_places=6, min_value=Decimal("0.000001"))
@@ -194,11 +248,21 @@ class DraftLineSerializer(StrictInputMixin, serializers.Serializer):
 
 
 class DraftSerializer(StrictInputMixin, serializers.Serializer):
+    customer_reference = serializers.CharField(max_length=200, allow_blank=True, required=False)
+    document_title = serializers.CharField(max_length=150, allow_blank=True, required=False)
+    notes = serializers.CharField(max_length=4000, allow_blank=True, required=False)
+    payment_terms = serializers.CharField(max_length=2000, allow_blank=True, required=False)
+    shipping_address = serializers.CharField(max_length=2000, allow_blank=True, required=False)
     customer = serializers.IntegerField(min_value=1)
     issue_date = serializers.DateField()
     due_date = serializers.DateField()
     document_language = serializers.ChoiceField(choices=("fr", "en", "ar", "de", "tr"))
     lines = DraftLineSerializer(many=True, allow_empty=False, max_length=200)
+
+
+class DuplicateInvoiceSerializer(StrictInputMixin, serializers.Serializer):
+    issue_date = serializers.DateField()
+    due_date = serializers.DateField()
 
 
 class PaymentInputSerializer(StrictInputMixin, serializers.Serializer):
@@ -214,7 +278,7 @@ def money(value, precision):
 class InvoiceLineSerializer(serializers.ModelSerializer):
     class Meta:
         model = InvoiceLine
-        fields = ("id", "product", "description", "quantity", "unit_price", "tax_rate", "net", "tax", "total")
+        fields = ("id", "product", "description", "quantity", "unit_price", "tax_rate", "discount_rate", "net", "tax", "total")
 
     def to_representation(self, instance):
         result = super().to_representation(instance)
@@ -242,7 +306,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Invoice
-        fields = ("id", "customer", "customer_name", "issue_date", "due_date", "document_language", "status", "number", "net", "tax", "total", "paid", "balance")
+        fields = ("id", "customer", "customer_name", "issue_date", "due_date", "document_language", "status", "number", "net", "tax", "total", "paid", "balance", "customer_reference", "document_title", "notes", "payment_terms", "shipping_address")
 
     def get_customer_name(self, obj):
         if hasattr(obj, "frozen_customer_name"):

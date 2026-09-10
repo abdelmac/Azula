@@ -7,6 +7,7 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   ...vue.configs['flat/essential'],
+  { languageOptions: { globals: { TextDecoder: 'readonly', navigator: 'readonly' } } },
   { files: ['**/*.vue'], languageOptions: { parserOptions: { parser: tseslint.parser } } },
   { languageOptions: { globals: { console: 'readonly', document: 'readonly', window: 'readonly', sessionStorage: 'readonly', fetch: 'readonly', URL: 'readonly', URLSearchParams: 'readonly', crypto: 'readonly', setTimeout: 'readonly', clearTimeout: 'readonly', AbortController: 'readonly', DOMException: 'readonly', Intl: 'readonly', RequestInit: 'readonly', Headers: 'readonly', process: 'readonly', HTMLElement: 'readonly', HTMLInputElement: 'readonly', HTMLSelectElement: 'readonly', KeyboardEvent: 'readonly', Event: 'readonly' } }, rules: { 'vue/multi-word-component-names': 'off' } },
 )

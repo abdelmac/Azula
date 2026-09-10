@@ -1,6 +1,11 @@
 <script setup lang="ts">
 defineProps<{ name: string }>()
 const paths: Record<string, string> = {
+  dashboard: 'M3 3h7v7H3V3m11 0h7v7h-7V3M3 14h7v7H3v-7m11 0h7v7h-7v-7',
+  banking: 'm3 8 9-5 9 5H3m2 3v7m7-7v7m7-7v7M3 21h18',
+  integrations: 'M8 7H5v10h3m8-10h3v10h-3m-6-5h4m-2-2v4M8 3v4H4V3h4m12 14v4h-4v-4h4',
+  exports: 'M12 3v12m-5-5 5 5 5-5M4 17v4h16v-4',
+  download: 'M12 3v12m-5-5 5 5 5-5M4 17v4h16v-4',
   invoices: 'M7 3h10l3 3v15l-4-2-4 2-4-2-4 2V3h3m1 5h8m-8 4h8m-8 4h4',
   customers: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m20 0v-2a4 4 0 0 0-3-3.87M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8m8-7.87a4 4 0 0 1 0 7.75',
   products: 'm12 3 9 5-9 5-9-5 9-5m-9 5v10l9 5 9-5V8m-9 5v10m-5-18 9 5',

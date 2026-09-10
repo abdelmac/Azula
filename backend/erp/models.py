@@ -12,6 +12,7 @@ MONEY = {"max_digits": 22, "decimal_places": 6}
 
 
 class Company(models.Model):
+    print_settings = models.JSONField(default=dict, blank=True)
     name = models.CharField(max_length=200)
     address = models.TextField(blank=True)
     email = models.EmailField(blank=True)
@@ -45,13 +46,42 @@ class CompanyOwned(models.Model):
 
 class Customer(CompanyOwned):
     name = models.CharField(max_length=200)
+    reference = models.CharField(max_length=80, blank=True)
+    legal_name = models.CharField(max_length=200, blank=True)
+    latin_name = models.CharField(max_length=200, blank=True)
+    contact_name = models.CharField(max_length=200, blank=True)
+    phone = models.CharField(max_length=40, blank=True)
+    phone_alt = models.CharField(max_length=40, blank=True)
+    mobile = models.CharField(max_length=40, blank=True)
+    fax = models.CharField(max_length=40, blank=True)
+    website = models.URLField(max_length=500, blank=True)
     email = models.EmailField(blank=True)
     address = models.TextField(blank=True)
+    postal_code = models.CharField(max_length=20, blank=True)
+    city = models.CharField(max_length=100, blank=True)
+    region = models.CharField(max_length=100, blank=True)
+    country = models.CharField(max_length=2, blank=True)
+    shipping_address = models.TextField(max_length=2000, blank=True)
+    group_name = models.CharField(max_length=100, blank=True)
+    payment_terms_days = models.PositiveSmallIntegerField(default=0, validators=[MaxValueValidator(365)])
+    default_discount_rate = models.DecimalField(max_digits=7, decimal_places=4, default=Decimal("0"))
+    credit_limit = models.DecimalField(**MONEY, null=True, blank=True)
+    bank_name = models.CharField(max_length=150, blank=True)
+    iban = models.CharField(max_length=34, blank=True)
+    bic = models.CharField(max_length=11, blank=True)
+    notes = models.TextField(max_length=4000, blank=True)
+    custom_fields = models.JSONField(default=dict, blank=True)
     tax_id = models.CharField(max_length=80, blank=True)
     archived = models.BooleanField(default=False)
 
     class Meta:
         indexes = [models.Index(fields=["company", "archived", "name"])]
+        constraints = [
+            models.UniqueConstraint(fields=["company", "reference"], condition=~Q(reference=""), name="customer_company_reference"),
+            models.CheckConstraint(condition=Q(payment_terms_days__lte=365), name="customer_payment_days"),
+            models.CheckConstraint(condition=Q(default_discount_rate__gte=0, default_discount_rate__lte=100), name="customer_discount_range"),
+            models.CheckConstraint(condition=Q(credit_limit__isnull=True) | Q(credit_limit__gte=0), name="customer_credit_nonnegative"),
+        ]
 
 
 class CatalogReference(CompanyOwned):
@@ -80,6 +110,16 @@ class Unit(CatalogReference):
 class Product(CompanyOwned):
     reference = models.CharField(max_length=80)
     name = models.CharField(max_length=200)
+    latin_name = models.CharField(max_length=200, blank=True)
+    barcode = models.CharField(max_length=80, blank=True)
+    manufacturer = models.CharField(max_length=150, blank=True)
+    supplier_name = models.CharField(max_length=150, blank=True)
+    color = models.CharField(max_length=80, blank=True)
+    dimensions = models.CharField(max_length=150, blank=True)
+    origin = models.CharField(max_length=100, blank=True)
+    weight = models.DecimalField(max_digits=16, decimal_places=6, null=True, blank=True)
+    notes = models.TextField(max_length=4000, blank=True)
+    custom_fields = models.JSONField(default=dict, blank=True)
     unit_price = models.DecimalField(**MONEY)
     purchase_price = models.DecimalField(**MONEY, null=True, blank=True)
     tax_rate = models.DecimalField(max_digits=7, decimal_places=4, default=Decimal("0"))
@@ -96,11 +136,30 @@ class Product(CompanyOwned):
             models.CheckConstraint(condition=Q(unit_price__gte=0), name="product_nonnegative_price"),
             models.CheckConstraint(condition=Q(purchase_price__isnull=True) | Q(purchase_price__gte=0), name="product_nonnegative_purchase"),
             models.CheckConstraint(condition=Q(tax_rate__gte=0, tax_rate__lte=100), name="product_tax_range"),
+            models.CheckConstraint(condition=Q(weight__isnull=True) | Q(weight__gte=0), name="product_weight_nonnegative"),
         ]
         indexes = [models.Index(fields=["company", "archived", "name"])]
 
 
+class CustomerPrice(CompanyOwned):
+    customer = models.ForeignKey(Customer, on_delete=models.PROTECT, related_name="prices")
+    product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name="customer_prices")
+    unit_price = models.DecimalField(**MONEY)
+    archived = models.BooleanField(default=False)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["company", "customer", "product"], name="customer_price_unique"),
+            models.CheckConstraint(condition=Q(unit_price__gte=0), name="customer_price_nonnegative"),
+        ]
+
+
 class Invoice(CompanyOwned):
+    customer_reference = models.CharField(max_length=200, blank=True)
+    document_title = models.CharField(max_length=150, blank=True)
+    notes = models.TextField(max_length=4000, blank=True)
+    payment_terms = models.TextField(max_length=2000, blank=True)
+    shipping_address = models.TextField(max_length=2000, blank=True)
     customer = models.ForeignKey(Customer, on_delete=models.PROTECT, related_name="invoices")
     issue_date = models.DateField()
     due_date = models.DateField()
@@ -152,6 +211,7 @@ class Invoice(CompanyOwned):
 
 
 class InvoiceLine(CompanyOwned):
+    discount_rate = models.DecimalField(max_digits=7, decimal_places=4, default=Decimal("0"))
     invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name="lines")
     position = models.PositiveIntegerField(default=0)
     product = models.ForeignKey(Product, on_delete=models.PROTECT, null=True, blank=True)
@@ -168,6 +228,7 @@ class InvoiceLine(CompanyOwned):
         constraints = [
             models.CheckConstraint(condition=Q(quantity__gt=0, unit_price__gte=0, net__gte=0, tax__gte=0), name="invoice_line_amounts"),
             models.CheckConstraint(condition=Q(tax_rate__gte=0, tax_rate__lte=100), name="invoice_line_tax_range"),
+            models.CheckConstraint(condition=Q(discount_rate__gte=0, discount_rate__lte=100), name="invoice_line_discount_range"),
             models.CheckConstraint(condition=Q(total=models.F("net") + models.F("tax")), name="invoice_line_total_sum"),
         ]
 

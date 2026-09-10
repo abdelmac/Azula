@@ -128,7 +128,7 @@ test('catalogue PostgreSQL : références, tarifs exacts, filtres, archivage et 
   await page.getByRole('button', { name: fr.newCustomer, exact: true }).click()
   await page.locator('input[name="name"]').fill(customerName)
   await page.getByRole('button', { name: fr.save, exact: true }).click()
-  await expect(page.getByText(customerName, { exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: customerName, exact: true, level: 1 })).toBeVisible()
   await page.goto('/invoices/new')
   await page.locator('.invoice-main .search-select input').first().fill(customerName)
   await page.getByRole('button', { name: customerName, exact: true }).click()
