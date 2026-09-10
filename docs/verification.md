@@ -14,8 +14,9 @@ Périmètre : [clients et articles](clients-et-tarifs.md), [facturation et impre
 | `npm run check`, `npm run lint`, `npm run test` | Réussis ; **18 tests Vitest** |
 | `npm run build` et `docker compose build backend` | Réussis, y compris après correction des filtres bancaires et des noms accessibles des sélecteurs |
 | Playwright avec Chrome et l’image Docker finale | **24 réussis en 42,6 s, aucun ignoré** : 20 essais avec fixtures et 4 parcours PostgreSQL réels sur `azula_e2e` |
+| CI GitHub du commit `bef3209` | **Réussie** : migrations, suite complète de **310 tests backend**, contrôles et **18 tests frontend**, compilation, taille JavaScript et **24 tests navigateur** sur Linux/PostgreSQL |
 
-Le backend comprend désormais **310 cas**. Les suites ci-dessus couvrent les remises exactes avant arrondi HALF_UP, les instantanés validés immuables, la duplication idempotente, les tarifs clients, la séparation des sociétés et des rôles, les champs supplémentaires bornés, les totaux et exports exacts, les clés API expirées/révoquées, les conflits de répétition, les imports CSV atomiques et les rapprochements concurrents. Les tests ne contactent aucune banque ni plateforme de paiement.
+La [CI du commit applicatif `bef3209cc84203f1cfe236fbe5d321fe5db76e71`](https://github.com/abdelmac/Azula/actions/runs/34512026795) confirme la réussite de la suite complète après les corrections locales. Les suites ci-dessus couvrent les remises exactes avant arrondi HALF_UP, les instantanés validés immuables, la duplication idempotente, les tarifs clients, la séparation des sociétés et des rôles, les champs supplémentaires bornés, les totaux et exports exacts, les clés API expirées/révoquées, les conflits de répétition, les imports CSV atomiques et les rapprochements concurrents. Les tests ne contactent aucune banque ni plateforme de paiement.
 
 Les tests utilisent exclusivement PostgreSQL 17.11 dans des bases isolées. Les migrations ERP `0006/0007` et `connections/0001/0002` ont été appliquées à `azula_e2e`, dont l’identité, la société et le seul compte synthétique sont vérifiés avant chaque exécution. Le contrôle de migration du catalogue utilise les modèles historiques et restaure toutes les feuilles du graphe, pour ne pas laisser les tests suivants sur un schéma ancien.
 
@@ -27,7 +28,15 @@ Les quatre parcours réels couvrent le catalogue, la fiche client et ses tarifs,
 
 Sous Windows, les permissions des téléchargements Chrome créés dans le dépôt empêchaient leur lecture par Node (`EPERM`). Une fixture dédiée utilise le répertoire temporaire système, vérifie les octets du véritable CSV téléchargé puis nettoie son dossier après fermeture du navigateur. Le code d’export et la politique CSP de l’application sont inchangés.
 
-L’état de publication est complété après son exécution. Les comptes et bases Internet n’ont pas servi aux tests métier.
+Le commit applicatif `bef3209cc84203f1cfe236fbe5d321fe5db76e71` est confirmé **`live`** sur [Azula](https://azula.onrender.com), déploiement Render `dep-dahf4uad0e5s73966qdg`. Le service Free existant, sa région et l’absence de déploiement automatique ont été revérifiés. Aucun service payant ni nouveau compte tiers n’a été activé.
+
+Une sauvegarde PostgreSQL au format custom a été créée avant la migration, relue intégralement avec `pg_restore` et contrôlée par SHA-256. Elle reste dans le dossier privé `.local/backups/erp-v2-bef3209cc84203f1cfe236fbe5d321fe5db76e71/`, avec manifeste et preuve de conservation, hors Git et contexte Docker. Les migrations ERP `0005/0006/0007` et `connections/0001/0002`, ainsi que les droits sur leurs nouvelles tables, ont été appliqués dans une transaction. Les empreintes des anciennes données, les ACL, les séquences métier et les protections antérieures sont inchangées. Les accès du rôle applicatif, la santé PostgreSQL, l’absence de migration restante et les contrôles Django de production ont réussi. La restauration de cette sauvegarde dans une seconde base n’a pas été exécutée.
+
+La recette Chrome de l’instance publique a réussi : santé PostgreSQL, HTTPS/HSTS, connexion avec les accès existants, cookie Secure/HttpOnly/SameSite, refus des accès anonymes et du POST client vide sans CSRF, contrats des API enrichies, export CSV en lecture seule, navigation des huit modules et affichage arabe sur mobile 390 × 844. Les largeurs de page, corps, contenu et en-tête restent à 390 px. La langue initiale est restaurée et relue via l’API à la fin. Les captures publiques masquent les données, montants et identités ; celle du tableau de bord mobile a été inspectée. Aucun objet métier, clé API ou compte bancaire n’a été créé ou modifié, aucune banque connectée.
+
+Le premier contrôle mobile tentait de recliquer sur le bouton hamburger recouvert par le volet ouvert. Le helper a été corrigé pour sélectionner le module Exports, puis vérifier la route active, la fermeture du volet et `aria-expanded=false`. La recette complète a ensuite réussi ; aucun changement du code applicatif n’était nécessaire.
+
+Les métadonnées locales ont été actualisées après vérification du déploiement Render exact `live` et des preuves de sauvegarde/migration. Les identifiants, mots de passe et secrets ont été comparés et conservés intégralement. L’installation locale sur 8080 est toujours active ; les conteneurs temporaires de recette sont supprimés. Les comptes et bases Internet n’ont pas servi aux tests métier.
 
 ## Paramètres de catalogue — 8 septembre 2026
 

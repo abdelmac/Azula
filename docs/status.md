@@ -2,13 +2,17 @@
 
 ## Évolution ERP — 10 septembre 2026
 
-Les fiches clients et articles détaillées, tarifs clients, relevés, remises par ligne, duplication de brouillons, atelier d’impression, API externes à clés révocables, import et rapprochement bancaire, tableau de bord et exports CSV sont implémentés. Le [guide de cette évolution](evolution-erp.md) décrit les écrans et leurs limites. La publication et les contrôles de cette version sont suivis dans [verification.md](verification.md). Les sections historiques ci-dessous conservent les résultats des versions précédentes.
+Les fiches clients et articles détaillées, tarifs clients, relevés, remises par ligne, duplication de brouillons, atelier d’impression, API externes à clés révocables, import et rapprochement bancaire, tableau de bord et exports CSV sont **publiés sur [azula.onrender.com](https://azula.onrender.com)**. Le commit `bef3209cc84203f1cfe236fbe5d321fe5db76e71` est confirmé `live` sur le service Render Free existant, avec la base Neon Free séparée.
+
+La [CI du commit déployé](https://github.com/abdelmac/Azula/actions/runs/34512026795) a réussi, avec 310 cas backend ; les 18 tests Vitest et les 24 scénarios Chrome ont réussi en local. Une sauvegarde vérifiée a précédé les migrations ERP `0005` à `0007` et connections `0001`/`0002`. Les anciennes données, droits et protections PostgreSQL ont été conservés ; aucun secret ni mot de passe n’a changé. Les contrôles publics HTTPS, API, exports, huit modules et navigation mobile arabe ont réussi, sans création ni modification d’objet métier.
+
+Le [guide de cette évolution](evolution-erp.md) décrit les écrans et leurs limites. Les résultats effectifs de publication sont suivis dans [verification.md](verification.md). Les sections historiques ci-dessous conservent les résultats des versions précédentes.
 
 ## Évolution du catalogue — 8 septembre 2026
 
-La [liste des prix](catalogue.md) et ses paramètres sont implémentés : classes, entrepôts, unités, prix d’achat, caractéristiques, photos HTTPS, filtres et impression. **212 tests backend, 18 tests Vitest et 9 tests Chrome réussis**, avec migration vérifiée sur PostgreSQL de test. Cette évolution reste à publier : aucune migration n’a été appliquée à la base Internet existante. Les résultats ci-dessous décrivent aussi la version précédemment déployée.
+État historique du 8 septembre : la [liste des prix](catalogue.md) et ses paramètres étaient implémentés, avec classes, entrepôts, unités, prix d’achat, caractéristiques, photos HTTPS, filtres et impression. **212 tests backend, 18 tests Vitest et 9 tests Chrome avaient réussi**, avec migration vérifiée sur PostgreSQL de test. Le catalogue restait alors à publier ; il est maintenant intégré au déploiement ERP du 10 septembre décrit ci-dessus.
 
-## Implémenté
+## Socle initial — historique du 7 septembre 2026
 
 - Socle Vue 3/TypeScript/Vite/Router/I18n et Django REST Framework, PostgreSQL exclusif.
 - Sessions, protection CSRF, limitation des connexions persistante, premier administrateur par commande, quatre rôles.
@@ -27,9 +31,9 @@ La [liste des prix](catalogue.md) et ses paramètres sont implémentés : classe
 
 Contrôles réellement réussis après adaptation du thème bleu et préparation de l’hébergement : **161 tests Python**, dont les 63 tests PostgreSQL API/comptabilité/concurrence et le contrôle de santé PostgreSQL, **18 tests Vitest**, **6 tests Chrome sans aucun ignoré**, build/types/lints. Le parcours réel client → facture 120 → règlements 50/70 → journal → impression arabe a réussi sur la base séparée `azula_e2e`. La mesure antérieure du JavaScript du premier écran sur Windows est de 65 317 octets gzip ; elle n’a pas été remesurée dans Docker.
 
-L’instance Internet **[azula.onrender.com](https://azula.onrender.com)** est active sur **Render Free + Neon Free**, à Francfort, avec le commit `d9adab9`. Le rôle PostgreSQL est restreint et sa connexion utilise TLS `verify-full`. La sonde PostgreSQL, la connexion administrateur, les cookies sécurisés, le refus des accès anonymes et des actions sans CSRF, le thème bleu et l’affichage arabe mobile ont été vérifiés. Aucun client ni facture d’essai n’a été créé en ligne. Les accès Internet sont dans `.local/azula-cloud-access.json` sur le poste de déploiement ; voir [deployment.md](deployment.md).
+Le déploiement initial du 7 septembre utilisait le commit `d9adab9` sur **Render Free + Neon Free**, à Francfort. Le rôle PostgreSQL restreint et TLS `verify-full` avaient été contrôlés, ainsi que la sonde PostgreSQL, la connexion administrateur, les cookies sécurisés, le refus des accès anonymes et des actions sans CSRF, le thème bleu et l’affichage arabe mobile. Aucun client ni facture d’essai n’avait été créé en ligne. Ces vérifications historiques ne remplacent pas celles de la version courante. Les accès Internet sont dans `.local/azula-cloud-access.json` sur le poste de déploiement ; voir [deployment.md](deployment.md).
 
-## Démarrage local vérifié
+## Démarrage local vérifié — historique du 7 septembre 2026
 
 - Docker Desktop 4.90.0, WSL 2.7.13, moteur Docker 29.7.2 et Compose 5.5.1 installés et disponibles après redémarrage Windows.
 - `docker compose up -d --build` réussi ; PostgreSQL 17.11 sain et Azula actif uniquement sur `http://localhost:8080`.
@@ -39,7 +43,7 @@ L’instance Internet **[azula.onrender.com](https://azula.onrender.com)** est a
 
 ## À vérifier sur une machine équipée
 
-Restent les générateurs volumétriques, plans SQL, p95 API et restauration d’une sauvegarde. La CI GitHub du commit déployé `d9adab9` a réussi. Sur chaque instance, créer une période comptable ouverte dans les paramètres avant de valider la première facture. Les quotas gratuits et la mise en veille doivent être pris en compte ; aucun abonnement payant ni déploiement automatique n’a été activé.
+Restent les générateurs volumétriques, plans SQL, p95 API et restauration d’une sauvegarde. La CI GitHub du commit courant `bef3209c` et le contrôle public élargi ont réussi. Sur chaque instance, créer une période comptable ouverte dans les paramètres avant de valider la première facture. Les quotas gratuits et la mise en veille doivent être pris en compte ; aucun abonnement payant ni déploiement automatique n’a été activé.
 
 Restent également la relecture humaine des cinq langues, l’impression arabe sur les polices/imprimantes cibles, Safari/macOS, les autres moteurs de navigateur et l’essai sur un vrai ordinateur double cœur/4 Go. Les essais avec fixtures visuelles ne remplacent pas la démonstration de données réellement comptabilisées.
 

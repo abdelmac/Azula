@@ -1,10 +1,22 @@
 # Déploiement Internet : commencer à 0 €
 
-L’instance **[azula.onrender.com](https://azula.onrender.com)** a été déployée et vérifiée le **7 septembre 2026**, avec le commit `d9adab9`, sur **Render Free à Francfort** et **PostgreSQL Neon Free** dans la même région. Le même conteneur sert Vue et Django sur une seule origine HTTPS ; les données et sessions restent dans PostgreSQL. Aucun abonnement payant n’a été souscrit et les déploiements automatiques sont désactivés.
+L’instance **[azula.onrender.com](https://azula.onrender.com)** exécute la version ERP du **10 septembre 2026**, commit `bef3209cc84203f1cfe236fbe5d321fe5db76e71`, confirmé `live` sur **Render Free à Francfort** avec **PostgreSQL Neon Free** dans la même région. Le même conteneur sert Vue et Django sur une seule origine HTTPS ; les données et sessions restent dans PostgreSQL. Aucun abonnement payant n’a été souscrit et les déploiements automatiques sont désactivés.
+
+La [CI de cette version](https://github.com/abdelmac/Azula/actions/runs/34512026795) a réussi. Les migrations, contrôles de la base et contrôles publics HTTPS, API, navigation et mobile arabe sont terminés avec succès. Le commit `d9adab9` et les vérifications du 7 septembre concernent le déploiement initial, désormais historique.
 
 Cette installation a été créée par l’API officielle Render avec les paramètres du profil [render.yaml](../render.yaml). La clé Django, générée localement avec plus de 64 caractères aléatoires, et l’URL du rôle applicatif ont été transmises comme variables secrètes, sans passer dans les arguments du terminal ni dans Git. Les accès Internet se trouvent dans `.local/azula-cloud-access.json`, avec des droits limités au compte Windows courant. La base locale reste distincte. Les étapes ci-dessous permettent de reproduire l’installation sur une nouvelle base ; ne pas recréer les ressources de l’instance existante.
 
 L’offre convient au lancement d’une démonstration accessible sur Internet. Le tarif visé est 0 € dans les quotas gratuits, sans domaine acheté. Un usage métier continu demandera de revoir disponibilité, sauvegardes et capacité.
+
+## Mise à jour ERP du 10 septembre
+
+Une sauvegarde privée `pg_dump` a été créée et vérifiée avant les migrations ERP `0005_catalog_parameters`, `0006_partner_details`, `0007_document_options`, puis connections `0001_initial` et `0002_connection_guards`. Les ajouts et les droits des nouvelles tables ont été appliqués dans une transaction, avec comparaison des anciennes colonnes et lignes, des droits, des séquences et des protections existantes avant/après. Les dix nouveaux triggers prévus, dont la protection de la devise/précision après configuration bancaire, ont été contrôlés explicitement.
+
+Les nouvelles requêtes et transactions externes disposent de droits `SELECT, INSERT` seulement. Les clés d’API n’autorisent que la mise à jour de `revoked_at`, les transactions bancaires seulement celle des trois champs de rapprochement. Les droits historiques, données métier, mots de passe et clé Django sont conservés. Les preuves et la sauvegarde sont stockées sur le poste de déploiement dans `.local/backups/`, avec accès Windows restreint ; elles ne sont pas publiées dans Git.
+
+Cette mise à jour utilise `MigrationExecutor` sans le signal `post_migrate` : les métadonnées des nouvelles permissions Django standards ne sont pas initialisées. Les autorisations Azula restent fondées sur les rôles, les sociétés et les portées des clés API. Une initialisation ciblée sera nécessaire si les permissions Django standards sont utilisées ultérieurement. Ce point est distinct des droits SQL effectivement vérifiés.
+
+La validation de l’archive a compris sa liste et la lecture de ses blocs ; une restauration complète dans une seconde base reste à tester. Les résultats détaillés, y compris le contrôle public réussi, sont dans [verification.md](verification.md). Les instructions suivantes concernent la création d’une **nouvelle installation**, pas la réinitialisation de l’instance existante.
 
 ## Ce que contient le profil
 
@@ -79,7 +91,16 @@ GRANT USAGE ON SCHEMA public TO azula_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO azula_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO azula_app;
 REVOKE UPDATE, DELETE, TRUNCATE ON erp_entry, erp_entryline, erp_payment,
-    erp_auditevent, erp_idempotencyrecord FROM azula_app;
+    erp_auditevent, erp_idempotencyrecord,
+    connections_externalrequest, connections_externaltransaction FROM azula_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON connections_integrationkey,
+    connections_banktransaction FROM azula_app;
+GRANT UPDATE (revoked_at) ON connections_integrationkey TO azula_app;
+GRANT UPDATE (invoice_id, payment_id, reconciled_at)
+    ON connections_banktransaction TO azula_app;
+REVOKE DELETE, TRUNCATE ON erp_customerprice, erp_productcategory, erp_unit,
+    erp_warehouse, connections_integration, connections_bankaccount FROM azula_app;
+REVOKE UPDATE, TRUNCATE ON erp_product_warehouses FROM azula_app;
 REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON django_migrations FROM azula_app;
 ```
 
@@ -111,7 +132,7 @@ Avant de considérer l’instance disponible, vérifier sur l’URL réellement 
 
 Render génère initialement une clé de 256 bits encodée sur 44 caractères. Django peut signaler `security.W009` car son contrôle demande 50 caractères. Pour un contrôle sans avertissement, remplacer le secret généré par une clé aléatoire d’au moins 64 caractères **avant les premières connexions**, puis redéployer ; ne pas masquer le contrôle.
 
-Documenter les résultats réellement obtenus dans [verification.md](verification.md). Pour l’instance indiquée au début de ce guide, ces contrôles distants ont réussi ; les parcours financiers ont été exécutés sur PostgreSQL de test séparé.
+Documenter les résultats réellement obtenus dans [verification.md](verification.md). Les premiers contrôles distants ont réussi le 7 septembre sur la version initiale. Pour la version ERP courante, les parcours financiers ont réussi sur PostgreSQL de test séparé et le contrôle public élargi a réussi sans modifier d’objet métier.
 
 ## Quotas et évolution du budget
 
