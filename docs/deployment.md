@@ -1,14 +1,22 @@
 # Déploiement Internet : commencer à 0 €
 
-L’instance **[azula.onrender.com](https://azula.onrender.com)** exécute la version ERP du **10 septembre 2026**, commit `bef3209cc84203f1cfe236fbe5d321fe5db76e71`, confirmé `live` sur **Render Free à Francfort** avec **PostgreSQL Neon Free** dans la même région. Le même conteneur sert Vue et Django sur une seule origine HTTPS ; les données et sessions restent dans PostgreSQL. Aucun abonnement payant n’a été souscrit et les déploiements automatiques sont désactivés.
+L’instance **[azula.onrender.com](https://azula.onrender.com)** exécute la version du **11 septembre 2026**, commit `6233d061cf43b4ad5b3e5255931e1428150919df`, confirmé `live` sur **Render Free à Francfort** avec **PostgreSQL Neon Free** dans la même région. Le même conteneur sert Vue et Django sur une seule origine HTTPS ; les données et sessions restent dans PostgreSQL. Aucun hébergement payant n’a été souscrit et les déploiements automatiques sont désactivés. Le module d’abonnements ERP est publié avec les paiements désactivés.
 
-La [CI de cette version](https://github.com/abdelmac/Azula/actions/runs/34512026795) a réussi. Les migrations, contrôles de la base et contrôles publics HTTPS, API, navigation et mobile arabe sont terminés avec succès. Le commit `d9adab9` et les vérifications du 7 septembre concernent le déploiement initial, désormais historique.
+La [CI de cette version](https://github.com/abdelmac/Azula/actions/runs/34611793412) a réussi. Les migrations, contrôles de la base et contrôles publics HTTPS, API, neuf modules et mobile arabe sont terminés avec succès. Les publications des 7 et 10 septembre sont conservées comme historique.
 
 Cette installation a été créée par l’API officielle Render avec les paramètres du profil [render.yaml](../render.yaml). La clé Django, générée localement avec plus de 64 caractères aléatoires, et l’URL du rôle applicatif ont été transmises comme variables secrètes, sans passer dans les arguments du terminal ni dans Git. Les accès Internet se trouvent dans `.local/azula-cloud-access.json`, avec des droits limités au compte Windows courant. La base locale reste distincte. Les étapes ci-dessous permettent de reproduire l’installation sur une nouvelle base ; ne pas recréer les ressources de l’instance existante.
 
 L’offre convient au lancement d’une démonstration accessible sur Internet. Le tarif visé est 0 € dans les quotas gratuits, sans domaine acheté. Un usage métier continu demandera de revoir disponibilité, sauvegardes et capacité.
 
-## Mise à jour ERP du 10 septembre
+## Mise à jour des abonnements du 11 septembre
+
+Les migrations `billing/0001_initial` et `0002_preserve_existing_access` ont été appliquées après une sauvegarde PostgreSQL custom vérifiée et relue intégralement. Les anciennes lignes, colonnes, permissions, protections et séquences métier sont inchangées. Les sociétés déjà présentes disposent d’une exemption ; aucun tarif, client Stripe, session de paiement ou événement de paiement n’a été créé. Les quatre nouvelles tables disposent de privilèges minimaux : lecture seule des tarifs, lecture/insertion/modification des abonnements et tentatives, lecture/insertion des événements.
+
+Le déploiement `dep-dai1a3ek1f9s73bgcmp0` cible le commit indiqué ci-dessus. Le paramètre `BILLING_ENABLED` est absent ou égal à `0` sur Render, y compris dans les groupes de variables liés ; l’API publique authentifiée confirme les paiements désactivés, aucun tarif et l’accès ERP conservé. Les métadonnées de publication locales ont été actualisées sans modifier les identifiants, secrets ou URL de connexion. Les sauvegardes et preuves restent privées dans `.local/backups/subscription-v3-6233d061cf43b4ad5b3e5255931e1428150919df/`.
+
+L’activation des paiements exige encore les tarifs, la devise, l’éventuel essai, le compte Stripe et sa configuration. Effectuer le parcours réel avec les cartes de test du compte retenu sur une installation séparée avant tout encaissement. Voir [abonnements.md](abonnements.md). Aucun paiement réel ni contrôle sur un compte Stripe réel n’est annoncé comme effectué.
+
+## Mise à jour ERP du 10 septembre — historique
 
 Une sauvegarde privée `pg_dump` a été créée et vérifiée avant les migrations ERP `0005_catalog_parameters`, `0006_partner_details`, `0007_document_options`, puis connections `0001_initial` et `0002_connection_guards`. Les ajouts et les droits des nouvelles tables ont été appliqués dans une transaction, avec comparaison des anciennes colonnes et lignes, des droits, des séquences et des protections existantes avant/après. Les dix nouveaux triggers prévus, dont la protection de la devise/précision après configuration bancaire, ont été contrôlés explicitement.
 

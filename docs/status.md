@@ -1,8 +1,18 @@
 # État de la première tranche
 
-## Évolution ERP — 10 septembre 2026
+## Abonnements — 11 septembre 2026
 
-Les fiches clients et articles détaillées, tarifs clients, relevés, remises par ligne, duplication de brouillons, atelier d’impression, API externes à clés révocables, import et rapprochement bancaire, tableau de bord et exports CSV sont **publiés sur [azula.onrender.com](https://azula.onrender.com)**. Le commit `bef3209cc84203f1cfe236fbe5d321fe5db76e71` est confirmé `live` sur le service Render Free existant, avec la base Neon Free séparée.
+Le module [Abonnements](abonnements.md) est **publié sur [azula.onrender.com](https://azula.onrender.com)**. Le [commit `6233d061cf43b4ad5b3e5255931e1428150919df`](https://github.com/abdelmac/Azula/commit/6233d061cf43b4ad5b3e5255931e1428150919df) est confirmé `live` sur le service Render Free existant, avec la même base Neon Free séparée.
+
+Le module propose les abonnements mensuels ou annuels par société, Stripe Checkout, un portail de gestion, les notifications signées et le contrôle d’accès serveur aux modules ERP. La page reste accessible lorsque l’abonnement expire ; seuls les administrateurs peuvent souscrire ou gérer l’abonnement. Le retour depuis la page de paiement ne suffit pas à ouvrir l’accès : le serveur attend la confirmation du prestataire.
+
+Sur l’instance publique, **`BILLING_ENABLED=0`** et aucun tarif ni compte Stripe n’est configuré. Les sociétés existantes conservent leur accès. L’activation commerciale, les tarifs et la configuration Stripe restent à décider par l’exploitant ; aucun paiement réel n’a été créé par cette publication.
+
+La [CI du commit déployé](https://github.com/abdelmac/Azula/actions/runs/34611793412) a réussi. Les **539 tests backend, 18 tests Vitest et 33 scénarios Playwright** ont réussi en local, sur des données de test séparées et avec paiements simulés pour l’abonnement. Les contrôles publics HTTPS, cookies, CSRF, API, exports CSV et neuf modules ont réussi sans écriture métier. La page Abonnements confirme la facturation désactivée, l’absence de tarifs et de configuration Stripe, et l’accès conservé. L’affichage arabe à 390 pixels ne déborde pas ; la langue initiale a été restaurée et les identifiants sont inchangés. Les résultats sont consignés dans [verification.md](verification.md).
+
+## Évolution ERP — historique du 10 septembre 2026
+
+Les fiches clients et articles détaillées, tarifs clients, relevés, remises par ligne, duplication de brouillons, atelier d’impression, API externes à clés révocables, import et rapprochement bancaire, tableau de bord et exports CSV ont été publiés le 10 septembre sur [azula.onrender.com](https://azula.onrender.com). Le commit `bef3209cc84203f1cfe236fbe5d321fe5db76e71` avait été confirmé `live` sur le service Render Free existant, avec la base Neon Free séparée. Ces fonctions restent intégrées à la version du 11 septembre décrite ci-dessus.
 
 La [CI du commit déployé](https://github.com/abdelmac/Azula/actions/runs/34512026795) a réussi, avec 310 cas backend ; les 18 tests Vitest et les 24 scénarios Chrome ont réussi en local. Une sauvegarde vérifiée a précédé les migrations ERP `0005` à `0007` et connections `0001`/`0002`. Les anciennes données, droits et protections PostgreSQL ont été conservés ; aucun secret ni mot de passe n’a changé. Les contrôles publics HTTPS, API, exports, huit modules et navigation mobile arabe ont réussi, sans création ni modification d’objet métier.
 
@@ -43,7 +53,7 @@ Le déploiement initial du 7 septembre utilisait le commit `d9adab9` sur **Rende
 
 ## À vérifier sur une machine équipée
 
-Restent les générateurs volumétriques, plans SQL, p95 API et restauration d’une sauvegarde. La CI GitHub du commit courant `bef3209c` et le contrôle public élargi ont réussi. Sur chaque instance, créer une période comptable ouverte dans les paramètres avant de valider la première facture. Les quotas gratuits et la mise en veille doivent être pris en compte ; aucun abonnement payant ni déploiement automatique n’a été activé.
+Restent les générateurs volumétriques, plans SQL, p95 API et restauration d’une sauvegarde. La [CI GitHub du commit courant `6233d061`](https://github.com/abdelmac/Azula/actions/runs/34611793412) et ses contrôles publics ont réussi. Sur chaque instance, créer une période comptable ouverte dans les paramètres avant de valider la première facture. Les quotas gratuits et la mise en veille doivent être pris en compte ; aucun abonnement payant ni déploiement automatique n’a été activé.
 
 Restent également la relecture humaine des cinq langues, l’impression arabe sur les polices/imprimantes cibles, Safari/macOS, les autres moteurs de navigateur et l’essai sur un vrai ordinateur double cœur/4 Go. Les essais avec fixtures visuelles ne remplacent pas la démonstration de données réellement comptabilisées.
 

@@ -4,7 +4,7 @@ ERP web en développement : fiches clients détaillées, tarifs personnalisés, 
 
 Les API versionnées permettent à un site ou à une application externe de consulter le catalogue, créer des clients et des brouillons, ou transmettre des transactions. Le module bancaire importe les relevés CSV et rapproche les encaissements avec les factures sur confirmation. Les connexions directes aux prestataires et les transferts de fonds restent à configurer ou développer selon les services choisis. Voir [les fonctions et leurs limites](docs/evolution-erp.md).
 
-Le module [Abonnements](docs/abonnements.md) prépare la vente d’un accès mensuel ou annuel par société via Stripe Checkout, avec portail client, notifications signées et contrôle d’accès serveur. Il est désactivé par défaut : les tarifs, le compte Stripe et l’activation réelle restent à choisir par l’exploitant. Les sociétés déjà présentes conservent leur accès et aucun paiement n’est créé par la mise à jour.
+Le module [Abonnements](docs/abonnements.md), publié le **11 septembre 2026**, permet de proposer un accès mensuel ou annuel par société via Stripe Checkout, avec portail client, notifications signées et contrôle d’accès serveur. Sur l’instance publique, **`BILLING_ENABLED=0`** : aucun tarif ni compte Stripe n’est configuré, et la facturation des abonnements reste à activer par l’exploitant. Les sociétés déjà présentes conservent leur accès et aucun paiement n’est créé par la mise à jour.
 
 L’interface est disponible en français, anglais, arabe, allemand et turc. La langue de l’utilisateur, celle du document, la devise et les conventions régionales sont distinctes. Les traductions initiales nécessitent une relecture humaine.
 
@@ -33,7 +33,9 @@ Sous macOS, employer `python3` à la place de `python` si nécessaire. Pour un e
 
 ## Déploiement Internet à 0 €
 
-L’instance **[azula.onrender.com](https://azula.onrender.com)** est déployée sur **Render Free**, avec une base **Neon Free** séparée, à Francfort. La version ERP du **10 septembre 2026**, commit `bef3209cc84203f1cfe236fbe5d321fe5db76e71`, est confirmée `live` sur Render. La sauvegarde, les migrations et les contrôles de conservation des données et droits existants ont réussi. Les contrôles publics HTTPS, API, navigation et mobile arabe ont également réussi ; les résultats sont dans [verification.md](docs/verification.md).
+L’instance **[azula.onrender.com](https://azula.onrender.com)** est déployée sur **Render Free**, avec une base **Neon Free** séparée, à Francfort. La version du **11 septembre 2026**, [commit `6233d061`](https://github.com/abdelmac/Azula/commit/6233d061cf43b4ad5b3e5255931e1428150919df), est confirmée `live` sur Render et ajoute le module Abonnements. Les contrôles publics HTTPS, cookies, CSRF, API, exports CSV, neuf modules et affichage mobile arabe ont réussi, sans écriture métier. L’accès existant et les identifiants sont conservés ; les résultats sont détaillés dans [verification.md](docs/verification.md).
+
+L’évolution ERP du 10 septembre, commit `bef3209c`, constitue la version précédente. Sa sauvegarde, ses migrations, les contrôles de conservation des données et droits, ainsi que ses contrôles publics HTTPS, API, navigation et mobile arabe avaient réussi. Ces résultats historiques ne remplacent pas les contrôles de la version du 11 septembre.
 
 Les accès Internet sont conservés sur le poste de déploiement dans `.local/azula-cloud-access.json`, hors Git ; ils sont distincts des accès locaux et n’ont pas été modifiés par cette mise à jour. Les vérifications HTTPS et du thème bleu du 7 septembre concernent le déploiement initial.
 
@@ -72,7 +74,7 @@ Le générateur volumétrique crée des **brouillons avec lignes**, sans fabriqu
 
 ## Vérifications et documentation
 
-Les résultats réellement obtenus et leurs limites sont consignés dans [le rapport de vérification](docs/verification.md). La CI lance les migrations depuis une base vide, les tests PostgreSQL, les contrôles frontend et Playwright ; elle a réussi pour le [commit déployé `bef3209c`](https://github.com/abdelmac/Azula/actions/runs/34512026795), avec 310 cas backend. Les 18 tests Vitest et les 24 scénarios Chrome ont également réussi en local, sur des données de test séparées.
+Les résultats réellement obtenus et leurs limites sont consignés dans [le rapport de vérification](docs/verification.md). La CI lance les migrations depuis une base vide, les tests PostgreSQL, les contrôles frontend et Playwright ; elle a réussi pour le [commit déployé `6233d061`](https://github.com/abdelmac/Azula/actions/runs/34611793412). Les **539 tests backend, 18 tests Vitest et 33 scénarios Playwright** ont réussi en local, sur des données de test séparées. Les parcours d’abonnement utilisent des paiements simulés ; ils ne constituent pas un paiement Stripe réel.
 
 - [Installation et développement Windows/macOS](docs/development.md)
 - [Architecture, permissions et règles comptables](docs/architecture.md)

@@ -15,6 +15,8 @@ Le [module d’abonnements](abonnements.md) ajoute Stripe Checkout et le portail
 | TypeScript et Vitest | Réussis ; **18 tests frontend** |
 | ESLint et construction Docker finale | Réussis, compilation Vue et précompression des ressources incluses |
 | Playwright/Chrome sur Docker | **33 parcours réussis en 59,6 s, aucun ignoré** : 29 essais avec fixtures dont 9 nouveaux scénarios d’abonnement, et 4 parcours métier PostgreSQL réels |
+| Contrôles ciblés après raccourcissement des clés Stripe factices | **175 tests réussis en 61,70 s**, sans appel Stripe ; Ruff réussi |
+| CI GitHub du commit applicatif `6233d06` | **Réussie** : migrations PostgreSQL, 539 tests backend, contrôles frontend, 18 tests Vitest, compilation et 33 parcours navigateur |
 
 Les scénarios de paiement utilisent PostgreSQL séparé et des réponses Stripe synthétiques. Les notifications d’intégration portent une véritable signature HMAC calculée avec un secret de test. Ils vérifient les doubles clics, les conflits d’idempotence, les réponses perdues, les échéances, la résiliation, l’essai utilisable une seule fois, l’origine serveur des montants et URL, les permissions et la séparation des sociétés. Les types des quantités, montants mineurs et références de facture sont contrôlés strictement. Un abonnement de test ne donne pas d’accès en mode réel. Le retour du navigateur ne peut pas déclarer un abonnement payé.
 
@@ -23,6 +25,16 @@ Les 60 nouveaux textes sont présents dans chacun des cinq catalogues, soit 467 
 La préparation du déploiement a réussi ses **8 contrôles locaux**, les **3 contrôles du finaliseur des métadonnées**, et une répétition dans un conteneur PostgreSQL jetable. La sauvegarde synthétique a été vérifiée ; les lignes historiques, droits, protections et séquences sont identiques avant/après, notamment une facture validée et son règlement. Les quatre nouvelles tables et les privilèges réels du rôle applicatif ont été contrôlés. Les deux sociétés présentes avant migration conservent une exemption ; une société créée ensuite n’en reçoit pas automatiquement. Aucun prix ni paiement n’est ajouté.
 
 Les tests avec le compte Stripe retenu, ses cartes de test, la configuration du portail et la livraison réelle de notifications Stripe restent à effectuer après fourniture de la configuration. Les vérifications simulées ne prouvent pas un encaissement réel. Les tarifs, devise, durée d’essai et choix du prestataire n’ont pas encore été confirmés par l’utilisateur.
+
+### Publication et contrôle du site
+
+La [CI du commit `6233d061cf43b4ad5b3e5255931e1428150919df`](https://github.com/abdelmac/Azula/actions/runs/34611793412) a réussi avant publication. Ce commit est confirmé **`live`** sur [Azula](https://azula.onrender.com/subscription), déploiement `dep-dai1a3ek1f9s73bgcmp0`. Render Free et Neon Free existants sont conservés, sans activation de service payant ni de déploiement automatique.
+
+Une sauvegarde PostgreSQL custom a été créée, contrôlée par empreinte SHA-256, listée et relue intégralement par `pg_restore` avant les migrations `billing/0001` et `0002`. Les empreintes des anciennes lignes, permissions, protections et séquences sont identiques avant/après. Les quatre tables et leurs droits applicatifs réels sont vérifiés, les sociétés existantes sont exemptées et aucun tarif, tentative ou événement de paiement n’est créé. Santé PostgreSQL, plan de migration vide et contrôles Django de production ont réussi. Sauvegarde, manifeste et preuve restent privés dans `.local/backups/subscription-v3-6233d061cf43b4ad5b3e5255931e1428150919df/`. La restauration de cette sauvegarde réelle dans une seconde base n’a pas été exécutée.
+
+Le contrôle public final a réussi : HTTPS/HSTS, session Secure/HttpOnly, refus anonymes et CSRF, contrats API et export CSV en lecture seule, navigation dans neuf modules dont **Abonnement**. L’API d’abonnement authentifiée confirme `enabled=false`, `configured=false`, `has_access=true` et `plans=[]`. Le mobile arabe est vérifié à 390 px sans débordement ; le menu et le retour de navigation fonctionnent, puis la langue initiale est restaurée et vérifiée. Captures masquées, aucun objet métier créé ou modifié et aucun paiement lancé. Le finaliseur confirme le commit exact en ligne et la conservation intégrale des identifiants et secrets locaux.
+
+Les premières tentatives du contrôle public se sont arrêtées sur quatre requêtes POST automatiques vers des chemins opaques hors API métier, bloquées par le script avant transmission. Leur origine n’a pas été déterminée. Elles n’étaient plus présentes lors du contrôle final, qui a réussi après retrait de l’instrumentation temporaire, sans assouplir le blocage des écritures ni modifier le code applicatif. GitHub avait également refusé les premières clés factices trop ressemblantes à des secrets ; elles ont été raccourcies dans les tests avant publication, sans contournement de la protection GitHub.
 
 ## Évolution ERP — 10 septembre 2026
 
