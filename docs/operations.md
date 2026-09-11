@@ -32,6 +32,9 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO azula_app;
 REVOKE UPDATE, DELETE, TRUNCATE ON erp_entry, erp_entryline, erp_payment,
     erp_auditevent, erp_idempotencyrecord FROM azula_app;
 REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON django_migrations FROM azula_app;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON billing_plan FROM azula_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON billing_webhookevent FROM azula_app;
+REVOKE DELETE, TRUNCATE ON billing_subscription, billing_checkoutattempt FROM azula_app;
 REVOKE UPDATE, DELETE, TRUNCATE ON connections_externalrequest,
     connections_externaltransaction, connections_integrationkey,
     connections_banktransaction FROM azula_app;

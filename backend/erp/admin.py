@@ -28,12 +28,19 @@ class InspectionAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
+        if not self.has_module_permission(request):
+            return queryset.none()
         if self.model is Company:
             return queryset.filter(pk=request.user.company_id)
         return queryset.filter(company_id=request.user.company_id)
 
     def has_module_permission(self, request):
-        return request.user.is_active and request.user.is_staff and request.user.role == "admin"
+        user = request.user
+        if not (user.is_active and user.is_staff and user.role == "admin" and user.company_id):
+            return False
+        from billing.access import get_access
+
+        return get_access(user.company_id)["has_access"]
 
     def has_view_permission(self, request, obj=None):
         if not self.has_module_permission(request):

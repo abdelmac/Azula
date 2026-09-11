@@ -4,6 +4,8 @@ ERP web en développement : fiches clients détaillées, tarifs personnalisés, 
 
 Les API versionnées permettent à un site ou à une application externe de consulter le catalogue, créer des clients et des brouillons, ou transmettre des transactions. Le module bancaire importe les relevés CSV et rapproche les encaissements avec les factures sur confirmation. Les connexions directes aux prestataires et les transferts de fonds restent à configurer ou développer selon les services choisis. Voir [les fonctions et leurs limites](docs/evolution-erp.md).
 
+Le module [Abonnements](docs/abonnements.md) prépare la vente d’un accès mensuel ou annuel par société via Stripe Checkout, avec portail client, notifications signées et contrôle d’accès serveur. Il est désactivé par défaut : les tarifs, le compte Stripe et l’activation réelle restent à choisir par l’exploitant. Les sociétés déjà présentes conservent leur accès et aucun paiement n’est créé par la mise à jour.
+
 L’interface est disponible en français, anglais, arabe, allemand et turc. La langue de l’utilisateur, celle du document, la devise et les conventions régionales sont distinctes. Les traductions initiales nécessitent une relecture humaine.
 
 Ce prototype n’est ni un ERP complet, ni un logiciel audité ou fiscalement certifié. Aucun pays fiscal n’est configuré. Les documents imprimés portent une mention de démonstration. La taxe de 20 % du scénario est une donnée d’essai.

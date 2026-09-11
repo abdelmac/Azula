@@ -1,4 +1,28 @@
-# Vérifications effectuées jusqu’au 10 septembre 2026
+# Vérifications effectuées jusqu’au 11 septembre 2026
+
+## Abonnements Azula — 11 septembre 2026
+
+Le [module d’abonnements](abonnements.md) ajoute Stripe Checkout et le portail client, les notifications signées, les tarifs importés par l’opérateur et le contrôle d’accès par société. Il reste désactivé par défaut ; aucun tarif, compte Stripe, paiement réel ou blocage des sociétés existantes n’est configuré par la livraison.
+
+| Contrôle exécuté | Résultat |
+| --- | --- |
+| Client Stripe et signature des notifications | **108 tests réussis**, requêtes HTTP simulées, réseau interdit dans les tests |
+| Souscriptions, paiements et reprises réseau | **67 tests PostgreSQL réussis en 65,19 s** sur `test_azula_billing_services` |
+| Contrôle d’accès session, API externe et administration | **54 tests PostgreSQL réussis en 72,45 s** sur `test_azula_subscription_access` |
+| Contrats API antérieurs, sans base | **27 tests réussis en 1,71 s** |
+| Suite backend complète sur PostgreSQL | **539 tests réussis en 338,25 s**, base séparée `test_azula_subscriptions` créée et supprimée par pytest |
+| Ruff complet et cohérence des migrations | Réussis, aucun changement de modèle sans migration |
+| TypeScript et Vitest | Réussis ; **18 tests frontend** |
+| ESLint et construction Docker finale | Réussis, compilation Vue et précompression des ressources incluses |
+| Playwright/Chrome sur Docker | **33 parcours réussis en 59,6 s, aucun ignoré** : 29 essais avec fixtures dont 9 nouveaux scénarios d’abonnement, et 4 parcours métier PostgreSQL réels |
+
+Les scénarios de paiement utilisent PostgreSQL séparé et des réponses Stripe synthétiques. Les notifications d’intégration portent une véritable signature HMAC calculée avec un secret de test. Ils vérifient les doubles clics, les conflits d’idempotence, les réponses perdues, les échéances, la résiliation, l’essai utilisable une seule fois, l’origine serveur des montants et URL, les permissions et la séparation des sociétés. Les types des quantités, montants mineurs et références de facture sont contrôlés strictement. Un abonnement de test ne donne pas d’accès en mode réel. Le retour du navigateur ne peut pas déclarer un abonnement payé.
+
+Les 60 nouveaux textes sont présents dans chacun des cinq catalogues, soit 467 clés par langue. Les neuf essais navigateur d’abonnement interceptent les pages Stripe : aucune connexion à Stripe ni carte bancaire n’est utilisée. Ils couvrent les destinations HTTPS autorisées, les erreurs réseau, le retour de paiement sans déblocage, le lecteur sans bouton d’achat, la redirection 402 pendant un export, l’arabe mobile, la souscription volontaire d’une société dispensée et le renouvellement d’une clé de tentative expirée. Les migrations ont aussi été appliquées sur `azula_e2e` ; le conteneur de recette sur 8081 a été supprimé à la fin. L’instance locale 8080 reste sur sa version précédente.
+
+La préparation du déploiement a réussi ses **8 contrôles locaux**, les **3 contrôles du finaliseur des métadonnées**, et une répétition dans un conteneur PostgreSQL jetable. La sauvegarde synthétique a été vérifiée ; les lignes historiques, droits, protections et séquences sont identiques avant/après, notamment une facture validée et son règlement. Les quatre nouvelles tables et les privilèges réels du rôle applicatif ont été contrôlés. Les deux sociétés présentes avant migration conservent une exemption ; une société créée ensuite n’en reçoit pas automatiquement. Aucun prix ni paiement n’est ajouté.
+
+Les tests avec le compte Stripe retenu, ses cartes de test, la configuration du portail et la livraison réelle de notifications Stripe restent à effectuer après fourniture de la configuration. Les vérifications simulées ne prouvent pas un encaissement réel. Les tarifs, devise, durée d’essai et choix du prestataire n’ont pas encore été confirmés par l’utilisateur.
 
 ## Évolution ERP — 10 septembre 2026
 

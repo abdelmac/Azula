@@ -1,6 +1,8 @@
 <script setup lang="ts">
 defineProps<{ name: string }>()
 const paths: Record<string, string> = {
+  refresh: 'M20 7v5h-5M4 17v-5h5M6 7a7 7 0 0 1 12-1l2 6M4 12l2 6a7 7 0 0 0 12-1',
+  subscription: 'M3 5h18v14H3V5m0 5h18M7 15h4',
   dashboard: 'M3 3h7v7H3V3m11 0h7v7h-7V3M3 14h7v7H3v-7m11 0h7v7h-7v-7',
   banking: 'm3 8 9-5 9 5H3m2 3v7m7-7v7m7-7v7M3 21h18',
   integrations: 'M8 7H5v10h3m8-10h3v10h-3m-6-5h4m-2-2v4M8 3v4H4V3h4m12 14v4h-4v-4h4',

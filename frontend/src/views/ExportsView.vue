@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ApiError, errorCode } from '../api'
 import { canPost } from '../session'
+import { reportSubscriptionRequired } from '../subscriptionEvents'
 import ErrorNotice from '../components/ErrorNotice.vue'
 import Icon from '../components/Icon.vue'
 const { t } = useI18n()
@@ -20,7 +21,7 @@ async function download() {
   let url = ''
   try {
     const response = await fetch(`/api/export/?${params}`, { credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'text/csv' } })
-    if (!response.ok) { const data = await response.json().catch(() => ({})); throw new ApiError(data.code ?? 'server_error', response.status) }
+    if (!response.ok) { const data = await response.json().catch(() => ({})); reportSubscriptionRequired(response.status, data.code); throw new ApiError(data.code ?? 'server_error', response.status) }
     if (!response.headers.get('content-type')?.includes('text/csv')) throw new ApiError('server_error')
     url = URL.createObjectURL(await response.blob())
     const anchor = document.createElement('a'); anchor.href = url; anchor.download = `azula-${resource.value}.csv`; document.body.append(anchor); anchor.click(); anchor.remove(); success.value = true

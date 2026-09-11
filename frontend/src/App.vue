@@ -29,6 +29,7 @@ async function signOut() { busy.value = true; error.value = ''; try { await logo
         <RouterLink v-if="canPost" to="/banking"><Icon name="banking" /><span>{{ t('banking') }}</span></RouterLink>
         <RouterLink to="/exports"><Icon name="exports" /><span>{{ t('exports') }}</span></RouterLink>
         <p class="nav-caption finance-caption">{{ t('settings') }}</p>
+        <RouterLink to="/subscription"><Icon name="subscription" /><span>{{ t('subscription') }}</span></RouterLink>
         <RouterLink v-if="isAdmin" to="/integrations"><Icon name="integrations" /><span>{{ t('integrations') }}</span></RouterLink>
         <RouterLink v-if="isAdmin" to="/print-settings"><Icon name="print" /><span>{{ t('printSettings') }}</span></RouterLink>
         <RouterLink to="/settings"><Icon name="settings" /><span>{{ t('settings') }}</span></RouterLink>

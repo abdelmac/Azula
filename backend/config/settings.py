@@ -30,7 +30,7 @@ ALLOW_DEMO_DATA = os.environ.get("ALLOW_DEMO_DATA", "0") == "1" and ENVIRONMENT 
 INSTALLED_APPS = [
     "django.contrib.admin", "django.contrib.auth", "django.contrib.contenttypes",
     "django.contrib.sessions", "django.contrib.messages", "django.contrib.staticfiles",
-    "rest_framework", "erp", "connections",
+    "rest_framework", "erp", "connections", "billing",
 ]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -106,3 +106,12 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 1_048_576
 LOGGING = {"version": 1, "disable_existing_loggers": False,
            "handlers": {"console": {"class": "logging.StreamHandler"}},
            "root": {"handlers": ["console"], "level": "WARNING"}}
+
+# Les abonnements restent désactivés tant que l'opérateur n'a pas configuré
+# son compte, ses prix et le webhook. Aucun tarif ni paiement réel par défaut.
+BILLING_ENABLED = os.environ.get("BILLING_ENABLED", "0") == "1"
+BILLING_PUBLIC_URL = os.environ.get("BILLING_PUBLIC_URL", "").rstrip("/")
+STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+STRIPE_LIVE_MODE = os.environ.get("STRIPE_LIVE_MODE", "0") == "1"
+STRIPE_API_VERSION = "2026-08-26.dahlia"

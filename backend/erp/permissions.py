@@ -11,7 +11,13 @@ class CompanyPermission(BasePermission):
         roles = getattr(view, "action_roles", {}).get(getattr(view, "action", ""))
         if roles is None:
             roles = getattr(view, "allowed_roles", {"admin", "accountant", "sales", "viewer"})
-        return user.role in roles
+        if user.role not in roles:
+            return False
+        if not getattr(view, "subscription_exempt", False):
+            from billing.access import require_access
+
+            require_access(user.company_id)
+        return True
 
     def has_object_permission(self, request, view, obj):
         return getattr(obj, "company_id", obj.pk if obj.__class__.__name__ == "Company" else None) == request.user.company_id

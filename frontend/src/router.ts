@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { initializeSession, session } from './session'
+import { initializeSession, session, subscriptionRequired, updateBillingAccess } from './session'
+import { onSubscriptionRequired } from './subscriptionEvents'
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -16,6 +17,7 @@ export const router = createRouter({
     { path: '/invoices/:id/print', component: () => import('./views/PrintView.vue'), meta: { title: 'printInvoice', print: true } },
     { path: '/accounting', component: () => import('./views/AccountingView.vue'), meta: { title: 'accounting' } },
     { path: '/settings', component: () => import('./views/SettingsView.vue'), meta: { title: 'settings' } },
+    { path: '/subscription', component: () => import('./views/BillingView.vue'), meta: { title: 'subscription' } },
     { path: '/exports', component: () => import('./views/ExportsView.vue'), meta: { title: 'exports' } },
     { path: '/integrations', component: () => import('./views/IntegrationsView.vue'), meta: { title: 'integrations', roles: ['admin'] } },
     { path: '/banking', component: () => import('./views/BankingView.vue'), meta: { title: 'banking', roles: ['admin', 'accountant'] } },
@@ -27,6 +29,12 @@ export const router = createRouter({
 router.beforeEach(async to => {
   try { await initializeSession() } catch { if (!to.meta.public) return { path: '/login', query: { unavailable: '1' } } }
   if (!session.user && !to.meta.public) return { path: '/login' }
+  if (session.user && subscriptionRequired.value && to.path !== '/subscription' && !to.meta.public) return '/subscription'
   if (session.user && to.path === '/login') return '/invoices'
   if (session.user && Array.isArray(to.meta.roles) && !to.meta.roles.includes(session.user.role)) return '/dashboard'
+})
+onSubscriptionRequired(() => {
+  if (!session.user) return
+  updateBillingAccess({ enabled: true, has_access: false, exempt: false, status: session.user.billing?.status ?? 'required' })
+  if (router.currentRoute.value.path !== '/subscription') void router.replace('/subscription')
 })

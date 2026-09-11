@@ -102,6 +102,9 @@ REVOKE DELETE, TRUNCATE ON erp_customerprice, erp_productcategory, erp_unit,
     erp_warehouse, connections_integration, connections_bankaccount FROM azula_app;
 REVOKE UPDATE, TRUNCATE ON erp_product_warehouses FROM azula_app;
 REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON django_migrations FROM azula_app;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON billing_plan FROM azula_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON billing_webhookevent FROM azula_app;
+REVOKE DELETE, TRUNCATE ON billing_subscription, billing_checkoutattempt FROM azula_app;
 ```
 
 Ne pas donner la propriété des tables, l’appartenance au rôle propriétaire ou le droit de créer des objets à `azula_app`. Réappliquer les droits adaptés après toute migration ajoutant des tables. Les règles de modification des factures et les triggers restent actifs.

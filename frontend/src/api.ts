@@ -1,3 +1,5 @@
+import { reportSubscriptionRequired } from './subscriptionEvents'
+
 export class ApiError extends Error {
   constructor(public code: string, public status = 0) { super(code) }
 }
@@ -28,6 +30,7 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
     const response = await fetch(`/api/${path}`, { ...options, method, headers, credentials: 'same-origin', cache: 'no-store' })
     if (response.status === 204) return undefined as T
     const data = await response.json().catch(() => ({}))
+    reportSubscriptionRequired(response.status, data.code)
     if (!response.ok) throw new ApiError(data.code ?? (response.status === 403 ? 'permission_denied' : response.status === 401 ? 'not_authenticated' : response.status === 404 ? 'not_found' : response.status === 429 ? 'rate_limited' : 'server_error'), response.status)
     return data as T
   } catch (error) {

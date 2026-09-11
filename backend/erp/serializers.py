@@ -87,10 +87,16 @@ class UserSerializer(StrictInputMixin, serializers.ModelSerializer):
 
 class MeSerializer(serializers.ModelSerializer):
     company = CompanySerializer(read_only=True)
+    billing = serializers.SerializerMethodField()
+
+    def get_billing(self, user):
+        from billing.access import get_access
+
+        return get_access(user.company_id)
 
     class Meta:
         model = User
-        fields = ("id", "username", "role", "language", "company")
+        fields = ("id", "username", "role", "language", "company", "billing")
 
 
 class LanguageSerializer(StrictInputMixin, serializers.Serializer):

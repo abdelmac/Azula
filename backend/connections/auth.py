@@ -16,6 +16,9 @@ def assert_key_active(key, scope=None):
         raise AuthenticationFailed()
     if scope and scope not in key.scopes:
         raise PermissionDenied()
+    from billing.access import require_access
+
+    require_access(key.company_id)
 
 
 class IntegrationAuthentication(BaseAuthentication):

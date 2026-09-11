@@ -79,6 +79,10 @@ logger = logging.getLogger(__name__)
 
 
 def exception_handler(exc, context):
+    from billing.exceptions import BillingError
+
+    if isinstance(exc, BillingError):
+        return Response({"code": exc.code, "detail": exc.code}, status=exc.status_code)
     if isinstance(exc, DomainError):
         code = exc.code
         status = 404 if code == "not_found" else 403 if code == "permission_denied" else 409 if code in {"immutable", "already_validated", "idempotency_conflict", "configuration_locked"} else 400
@@ -206,6 +210,7 @@ class LogoutView(APIView):
 
 class MeView(APIView):
     permission_classes = [IsAuthenticated, CompanyPermission]
+    subscription_exempt = True
 
     def get(self, request):
         return Response(MeSerializer(request.user).data)

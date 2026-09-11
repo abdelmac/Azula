@@ -1,9 +1,10 @@
 import type { PrintSettings } from './documentTypes'
+import type { BillingAccess } from './billingTypes'
 
 export const languages = ['fr', 'en', 'ar', 'de', 'tr'] as const
 export type Language = typeof languages[number]
 export type Role = 'admin' | 'accountant' | 'sales' | 'viewer'
-export interface User { id: number; username: string; role: Role; language: Language; company: number | Company; is_active?: boolean }
+export interface User { id: number; username: string; role: Role; language: Language; company: number | Company; is_active?: boolean; billing?: BillingAccess }
 export interface Company { id: number; name: string; address: string; email: string; currency: string; precision: number; document_language: Language; locale: string; print_settings?: PrintSettings }
 export interface Page<T> { count: number; next: string | null; previous: string | null; results: T[] }
 export interface Customer { id: number; name: string; email: string; address: string; tax_id: string; archived: boolean; default_discount_rate?: string; payment_terms_days?: number; shipping_address?: string }

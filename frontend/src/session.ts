@@ -2,16 +2,25 @@ import { computed, reactive } from 'vue'
 import { api, ApiError, refreshCsrf, write } from './api'
 import { setLanguage } from './i18n'
 import type { Company, Language, User } from './types'
+import type { BillingAccess } from './billingTypes'
 
 export const session = reactive({ user: null as User | null, company: null as Company | null, ready: false })
 export const canPrepare = computed(() => ['admin', 'accountant', 'sales'].includes(session.user?.role ?? ''))
 export const canPost = computed(() => ['admin', 'accountant'].includes(session.user?.role ?? ''))
 export const isAdmin = computed(() => session.user?.role === 'admin')
+export const subscriptionRequired = computed(() => {
+  const billing = session.user?.billing
+  return !!billing?.enabled && !billing.has_access && !billing.exempt
+})
+function needsSubscription(user: User): boolean { return !!user.billing?.enabled && !user.billing.has_access && !user.billing.exempt }
+export function updateBillingAccess(billing: BillingAccess): void {
+  if (session.user) session.user.billing = { enabled: billing.enabled, has_access: billing.has_access, exempt: billing.exempt, status: billing.status }
+}
 export async function initializeSession(): Promise<void> {
   if (session.ready) return
   try {
     const user = await api<User>('auth/me/')
-    const company = typeof user.company === 'object' ? user.company : await api<Company>('company/')
+    const company = typeof user.company === 'object' ? user.company : needsSubscription(user) ? null : await api<Company>('company/')
     await setLanguage(user.language)
     session.user = user
     session.company = company
@@ -24,7 +33,7 @@ export async function login(username: string, password: string): Promise<void> {
   await refreshCsrf()
   session.user = await write<User>('auth/login/', { username, password })
   await refreshCsrf()
-  session.company = typeof session.user.company === 'object' ? session.user.company : await api<Company>('company/')
+  session.company = typeof session.user.company === 'object' ? session.user.company : needsSubscription(session.user) ? null : await api<Company>('company/')
   session.ready = true
   await setLanguage(session.user.language)
 }
